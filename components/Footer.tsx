@@ -11,7 +11,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
-            <h3 className="text-white font-bold text-lg mb-3">🇻🇪 Vez la Ayuda</h3>
+            <h3 className="text-white font-bold text-lg mb-3">🇻🇪 Estamos por Venezuela</h3>
             <p className="text-sm leading-relaxed">{t('footer.about')}</p>
           </div>
 
@@ -29,9 +29,14 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-3">Información</h4>
             <p className="text-xs leading-relaxed text-slate-400">{t('footer.disclaimer')}</p>
             <p className="text-xs mt-3 text-slate-500">
-              vezlayuda.com<br />
+              estamosporvenezuela.com<br />
               Plataforma ciudadana independiente
             </p>
+            <div className="mt-3">
+              <Link href="/privacidad" className="text-xs text-slate-500 hover:text-slate-300 transition-colors">
+                Política de privacidad
+              </Link>
+            </div>
           </div>
         </div>
 

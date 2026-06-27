@@ -168,6 +168,21 @@ export const translations = {
     'common.required': 'Obligatorio',
     'common.optional': 'Opcional',
 
+    // New nav items
+    'nav.donaciones': 'Donar',
+    'nav.mapa': 'Mapa',
+    'nav.voluntarios': 'Voluntarios',
+
+    // Home new sections
+    'home.urgent.title': 'Se necesita AHORA',
+    'home.urgent.subtitle': 'Necesidades específicas urgentes — actualizado 27 jun 2026',
+    'home.donate.title': 'Donaciones verificadas',
+    'home.donate.subtitle': 'La donación económica llega más rápido y sin problemas logísticos.',
+    'home.donate.cta': 'Ver cómo donar',
+    'home.volunteer.title': 'Ofrece tu habilidad',
+    'home.volunteer.subtitle': 'Traductores, médicos, diseñadores, psicólogos, fontaneros — todos sois necesarios.',
+    'home.volunteer.cta': 'Ver voluntarios',
+
     // Footer
     'footer.about': 'Estamos por Venezuela es una plataforma ciudadana independiente creada para centralizar la ayuda humanitaria tras el terremoto en Venezuela.',
     'footer.disclaimer': 'No somos una ONG. Verificamos los recursos publicados pero no somos responsables de terceros.',
@@ -342,6 +357,21 @@ export const translations = {
     'common.close': 'Close',
     'common.required': 'Required',
     'common.optional': 'Optional',
+
+    // New nav items
+    'nav.donaciones': 'Donate',
+    'nav.mapa': 'Map',
+    'nav.voluntarios': 'Volunteers',
+
+    // Home new sections
+    'home.urgent.title': 'Needed RIGHT NOW',
+    'home.urgent.subtitle': 'Specific urgent needs — updated June 27 2026',
+    'home.donate.title': 'Verified donations',
+    'home.donate.subtitle': 'Financial donations arrive faster with no logistical issues.',
+    'home.donate.cta': 'See how to donate',
+    'home.volunteer.title': 'Offer your skill',
+    'home.volunteer.subtitle': 'Translators, doctors, designers, psychologists, plumbers — everyone is needed.',
+    'home.volunteer.cta': 'See volunteers',
 
     // Footer
     'footer.about': 'Estamos por Venezuela is an independent citizen platform created to centralize humanitarian aid after the Venezuela earthquake.',

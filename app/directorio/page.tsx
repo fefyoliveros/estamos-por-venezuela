@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { useTranslation } from '@/lib/i18n/context'
 import ResourceCard from '@/components/ResourceCard'
-import type { Resource, ResourceType } from '@/types/database'
+import type { Resource } from '@/types/database'
 
 const FILTERS: { value: string; key: string }[] = [
   { value: 'all', key: 'directory.filter.all' },
@@ -18,12 +19,13 @@ const FILTERS: { value: string; key: string }[] = [
   { value: 'animal_rescue', key: 'directory.filter.animal_rescue' },
 ]
 
-export default function DirectorioPage() {
+function DirectorioContent() {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [activeFilter, setActiveFilter] = useState('all')
+  const [activeFilter, setActiveFilter] = useState(searchParams.get('type') ?? 'all')
   const [country, setCountry] = useState('all')
 
   const fetchResources = useCallback(async () => {
@@ -107,5 +109,17 @@ export default function DirectorioPage() {
         </>
       )}
     </div>
+  )
+}
+
+export default function DirectorioPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-slate-400">
+        Cargando directorio...
+      </div>
+    }>
+      <DirectorioContent />
+    </Suspense>
   )
 }

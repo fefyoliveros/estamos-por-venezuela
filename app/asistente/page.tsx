@@ -55,12 +55,17 @@ export default function AsistentePage() {
         }),
       })
 
-      const json = await res.json() as { recommendation: Recommendation; resources: Resource[] }
-      setRecommendation(json.recommendation)
+      const json = await res.json() as { recommendation?: Recommendation; resources?: Resource[]; error?: string }
+
+      if (!res.ok) {
+        throw new Error(json.error ?? 'Error al procesar la solicitud')
+      }
+
+      setRecommendation(json.recommendation!)
       setResources(json.resources ?? [])
       setStep('result')
-    } catch {
-      setError(t('common.error'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'))
       setStep('q3')
     }
   }

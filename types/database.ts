@@ -74,6 +74,35 @@ export interface Business {
   created_at: string
 }
 
+export type SkillCategory =
+  | 'translator'
+  | 'medical'
+  | 'psychological'
+  | 'legal'
+  | 'it'
+  | 'design'
+  | 'pr'
+  | 'logistics'
+  | 'construction'
+  | 'other'
+
+export type SkillAvailability = 'remote' | 'local' | 'both'
+
+export interface SkillOffer {
+  id: string
+  full_name: string
+  skill_category: SkillCategory
+  skill_description: string
+  availability: SkillAvailability
+  location: string | null
+  contact_method: string
+  contact_value: string
+  active: boolean
+  created_at: string
+}
+
+export type SkillOfferInsert = Omit<SkillOffer, 'id' | 'created_at' | 'active'>
+
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>
 export type HelpRequestInsert = Omit<HelpRequest, 'id' | 'created_at'>

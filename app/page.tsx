@@ -55,7 +55,7 @@ export default async function HomePage() {
               {t['home.hero.cta.help']}
             </Link>
             <Link
-              href="/directorio?type=campaign"
+              href="/donaciones"
               className="px-6 py-3 rounded-xl bg-yellow-400 text-slate-900 font-bold hover:bg-yellow-300 transition-colors"
             >
               {t['home.hero.cta.donate']}
@@ -84,6 +84,37 @@ export default async function HomePage() {
           <div className="col-span-2 sm:col-span-1">
             <p className="text-4xl font-black text-blue-700">3</p>
             <p className="text-sm text-slate-500 mt-1">{t['home.stats.countries']}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* URGENT NEEDS NOW */}
+      <section className="bg-red-900 text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="flex items-center gap-3 mb-6">
+            <span className="text-3xl animate-pulse">🚨</span>
+            <div>
+              <h2 className="text-2xl font-black">{t['home.urgent.title']}</h2>
+              <p className="text-red-300 text-sm">{t['home.urgent.subtitle']}</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { icon: '🏥', label: 'Hospitales sin suministros', detail: 'Medicamentos básicos, jeringas, guantes y material quirúrgico agotados en hospitales de las zonas afectadas.' },
+              { icon: '👶', label: 'Niños atrapados + familias separadas', detail: 'Menores sin localizar. Plataformas activas: venezolanos-en-el-exterior.com, missingpersons.ngo' },
+              { icon: '🩸', label: 'Sangre — tipos O−, A+, AB−', detail: 'Bancos de sangre críticos. Contacta hospitales de referencia o Cruz Roja Venezuela directamente.' },
+              { icon: '🥫', label: 'Alimentos para zonas aisladas', detail: 'Comunidades cortadas por derrumbes. WCK y Caritas coordinan envíos — dona a ellos directamente.' },
+              { icon: '🐕', label: 'Animales atrapados y heridos', detail: 'Rescatistas activos en Instagram: @rescatevzla @animalrescueve @patitas_vzla' },
+              { icon: '🔍', label: 'Personas desaparecidas', detail: 'Reportar en: venezolanos-en-el-exterior.com · buscatuvzla.com · gofindme.io · missingpersons.ngo' },
+            ].map((item) => (
+              <div key={item.label} className="bg-red-800/60 rounded-xl px-4 py-4 border border-red-700">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xl">{item.icon}</span>
+                  <p className="font-bold text-sm">{item.label}</p>
+                </div>
+                <p className="text-xs text-red-200 leading-relaxed">{item.detail}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -129,6 +160,26 @@ export default async function HomePage() {
             </Link>
           </div>
 
+          {/* Donate */}
+          <div className="card border-yellow-200 bg-yellow-50">
+            <div className="text-3xl mb-3">💛</div>
+            <h2 className="text-xl font-black text-slate-900 mb-2">{t['home.donate.title']}</h2>
+            <p className="text-slate-600 text-sm mb-4">{t['home.donate.subtitle']}</p>
+            <Link href="/donaciones" className="btn-primary text-sm">
+              {t['home.donate.cta']} →
+            </Link>
+          </div>
+
+          {/* Volunteers */}
+          <div className="card border-blue-100 bg-blue-50">
+            <div className="text-3xl mb-3">🤝</div>
+            <h2 className="text-xl font-black text-slate-900 mb-2">{t['home.volunteer.title']}</h2>
+            <p className="text-slate-600 text-sm mb-4">{t['home.volunteer.subtitle']}</p>
+            <Link href="/voluntarios" className="btn-primary text-sm">
+              {t['home.volunteer.cta']} →
+            </Link>
+          </div>
+
           {/* Submit resource */}
           <div className="card border-slate-200 md:col-span-2">
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -149,7 +200,7 @@ export default async function HomePage() {
       <section className="bg-yellow-400">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm font-semibold text-slate-900 text-center">
-            <span className="text-base">Dona ahora a ONGs verificadas:</span>
+            <Link href="/donaciones" className="text-base hover:underline whitespace-nowrap">Dona ahora a ONGs verificadas →</Link>
             <div className="flex flex-wrap gap-3 items-center justify-center">
               <span className="bg-white/60 rounded-lg px-3 py-1.5">Cruz Roja ES · Bizum 33512</span>
               <span className="bg-white/60 rounded-lg px-3 py-1.5">UNICEF · unicef.org</span>

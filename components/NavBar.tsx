@@ -13,14 +13,23 @@ export default function NavBar() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2 font-bold text-lg text-slate-900">
           <span className="text-red-600">🇻🇪</span>
-          <span className="hidden sm:inline">Vez la Ayuda</span>
-          <span className="sm:hidden">VLA</span>
+          <span className="hidden sm:inline">Estamos por Venezuela</span>
+          <span className="sm:hidden">EPV</span>
         </Link>
 
         {/* Desktop nav */}
         <div className="hidden md:flex items-center gap-6 text-sm font-medium">
           <Link href="/directorio" className="text-slate-600 hover:text-slate-900 transition-colors">
             {t('nav.directorio')}
+          </Link>
+          <Link href="/donaciones" className="text-slate-600 hover:text-slate-900 transition-colors">
+            {t('nav.donaciones')}
+          </Link>
+          <Link href="/mapa" className="text-slate-600 hover:text-slate-900 transition-colors">
+            {t('nav.mapa')}
+          </Link>
+          <Link href="/voluntarios" className="text-slate-600 hover:text-slate-900 transition-colors">
+            {t('nav.voluntarios')}
           </Link>
           <Link href="/asistente" className="text-slate-600 hover:text-slate-900 transition-colors">
             {t('nav.asistente')}
@@ -69,8 +78,17 @@ export default function NavBar() {
           <Link href="/directorio" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
             {t('nav.directorio')}
           </Link>
+          <Link href="/donaciones" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
+            {t('nav.donaciones')}
+          </Link>
+          <Link href="/mapa" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
+            {t('nav.mapa')}
+          </Link>
+          <Link href="/voluntarios" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
+            {t('nav.voluntarios')}
+          </Link>
           <Link href="/asistente" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
-            Asistente de ayuda
+            {t('nav.asistente')}
           </Link>
           <Link href="/necesito-ayuda" className="py-2 text-red-600 font-semibold" onClick={() => setMenuOpen(false)}>
             {t('nav.necesito-ayuda')}

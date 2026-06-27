@@ -3,6 +3,7 @@ import './globals.css'
 import { TranslationProvider } from '@/lib/i18n/context'
 import NavBar from '@/components/NavBar'
 import Footer from '@/components/Footer'
+import CookieBanner from '@/components/CookieBanner'
 
 export const metadata: Metadata = {
   title: 'Estamos por Venezuela — Ayuda humanitaria terremoto 2026',
@@ -35,6 +36,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <CookieBanner />
         </TranslationProvider>
       </body>
     </html>
