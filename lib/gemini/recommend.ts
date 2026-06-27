@@ -53,7 +53,7 @@ const recommendationSchema: Schema = {
 
 export async function getRecommendation(answers: UserAnswers): Promise<Recommendation> {
   const model = genAI.getGenerativeModel({
-    model: 'gemini-1.5-flash',
+    model: 'gemini-2.0-flash',
     systemInstruction: `Eres un coordinador de ayuda humanitaria experto en la crisis del terremoto en Venezuela (junio 2026).
 Tu trabajo es orientar a personas que quieren ayudar y conectarlas con las acciones más útiles según su ubicación, disponibilidad y tipo de apoyo.
 Sé específico, práctico y empático. Responde siempre en el mismo idioma que el usuario (si el texto está en español, responde en español).

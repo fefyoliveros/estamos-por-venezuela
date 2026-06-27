@@ -103,6 +103,29 @@ export interface SkillOffer {
 
 export type SkillOfferInsert = Omit<SkillOffer, 'id' | 'created_at' | 'active'>
 
+export type InitiativeCategory =
+  | 'logistics'
+  | 'medical'
+  | 'food'
+  | 'rescue'
+  | 'psychosocial'
+  | 'translation'
+  | 'collection'
+  | 'coordination'
+  | 'other'
+
+export interface VolunteerInitiative {
+  id: string
+  title: string
+  description: string
+  location: string
+  coordinator_name: string
+  needed_skills: string[]
+  spots_available: number | null
+  category: InitiativeCategory
+  created_at: string
+}
+
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>
 export type HelpRequestInsert = Omit<HelpRequest, 'id' | 'created_at'>
