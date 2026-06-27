@@ -584,11 +584,13 @@ function OnsiteTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       })
-      const json = await res.json() as { data?: OnsiteVolunteer; error?: string }
+      const json = await res.json() as { ok?: boolean; error?: string }
       if (!res.ok) throw new Error(json.error ?? 'Error')
       setSuccess(true)
       setShowForm(false)
-      if (json.data) setVolunteers((prev) => [json.data!, ...prev])
+      void fetch('/api/onsite-volunteers')
+        .then((r) => r.json())
+        .then((j: { data: OnsiteVolunteer[] }) => setVolunteers(j.data ?? []))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al registrarte')
     } finally {

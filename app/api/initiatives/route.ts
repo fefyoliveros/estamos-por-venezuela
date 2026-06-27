@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient()
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('volunteer_initiatives')
       .insert({
         title,
@@ -44,13 +44,11 @@ export async function POST(request: Request) {
         needed_skills: body.needed_skills ?? [],
         spots_available: body.spots_available ?? null,
         category,
-        active: false, // pending admin approval
+        active: false, // pending admin approval — not readable until activated
       })
-      .select('id, title, description, location, coordinator_name, needed_skills, spots_available, category, created_at')
-      .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json({ ok: true }, { status: 201 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error desconocido'
     return NextResponse.json({ error: message }, { status: 500 })

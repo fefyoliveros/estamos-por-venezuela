@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient()
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('onsite_volunteers')
       .insert({
         full_name,
@@ -54,11 +54,9 @@ export async function POST(request: Request) {
         group_affiliation: body.group_affiliation ?? null,
         acknowledged_safety: true,
       })
-      .select('id, full_name, origin_location, available_from, skills, has_vehicle, group_affiliation')
-      .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ data }, { status: 201 })
+    return NextResponse.json({ ok: true }, { status: 201 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error desconocido'
     return NextResponse.json({ error: message }, { status: 500 })
