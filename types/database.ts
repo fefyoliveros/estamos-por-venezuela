@@ -126,6 +126,17 @@ export interface VolunteerInitiative {
   created_at: string
 }
 
+export interface OnsiteVolunteer {
+  id: string
+  full_name: string
+  origin_location: string
+  available_from: string
+  skills: string
+  has_vehicle: boolean
+  group_affiliation: string | null
+  created_at: string
+}
+
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>
 export type HelpRequestInsert = Omit<HelpRequest, 'id' | 'created_at'>

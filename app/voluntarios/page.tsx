@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { SkillOffer, SkillCategory, SkillAvailability, VolunteerInitiative, InitiativeCategory } from '@/types/database'
+import type { SkillOffer, SkillCategory, SkillAvailability, VolunteerInitiative, InitiativeCategory, OnsiteVolunteer } from '@/types/database'
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 
@@ -547,9 +547,224 @@ function SkillsTab() {
   )
 }
 
+// ── Onsite volunteers tab ─────────────────────────────────────────────────────
+
+const INITIAL_ONSITE = {
+  full_name: '', origin_location: '', available_from: '', skills: '',
+  has_vehicle: false, contact: '', group_affiliation: '', acknowledged_safety: false,
+}
+
+function OnsiteTab() {
+  const [volunteers, setVolunteers] = useState<OnsiteVolunteer[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [showForm, setShowForm]     = useState(false)
+  const [form, setForm]             = useState(INITIAL_ONSITE)
+  const [submitting, setSubmitting] = useState(false)
+  const [success, setSuccess]       = useState(false)
+  const [error, setError]           = useState('')
+
+  useEffect(() => {
+    fetch('/api/onsite-volunteers')
+      .then((r) => r.json())
+      .then((json: { data: OnsiteVolunteer[]; count: number }) => {
+        setVolunteers(json.data ?? [])
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.acknowledged_safety) { setError('Debes confirmar que leerás las instrucciones de seguridad.'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/onsite-volunteers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json() as { data?: OnsiteVolunteer; error?: string }
+      if (!res.ok) throw new Error(json.error ?? 'Error')
+      setSuccess(true)
+      setShowForm(false)
+      if (json.data) setVolunteers((prev) => [json.data!, ...prev])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al registrarte')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const withVehicle = volunteers.filter((v) => v.has_vehicle).length
+
+  return (
+    <div>
+      {/* Safety warning — prominent, non-skippable visually */}
+      <div className="bg-red-900 text-white rounded-2xl p-5 mb-6">
+        <div className="flex items-start gap-3 mb-3">
+          <span className="text-2xl shrink-0">⚠️</span>
+          <div>
+            <p className="font-black text-lg mb-1">NO vayas solo ni sin coordinación previa</p>
+            <p className="text-red-200 text-sm leading-relaxed">
+              Acudir de forma individual e improvisada puede colapsar las rutas de acceso a los
+              equipos de rescate y ponerte en peligro a ti mismo. Lee estas instrucciones antes de registrarte:
+            </p>
+          </div>
+        </div>
+        <ul className="text-sm text-red-100 space-y-1.5 mb-4 ml-9 list-disc">
+          <li>Únete a un grupo organizado — UCV, Cruz Roja, Acción Directa o una agrupación de activistas con experiencia.</li>
+          <li>Coordina con los grupos antes de desplazarte. Pregunta qué necesitan exactamente y cuándo.</li>
+          <li>No dupliques esfuerzos: llama primero para saber si ya tienen suficientes voluntarios.</li>
+          <li>Lleva agua, comida, linterna y cargador portátil. No cuentes con encontrar nada allí.</li>
+          <li>Informa siempre a alguien de confianza dónde vas y cuándo volverás.</li>
+        </ul>
+        <div className="flex flex-wrap gap-2 ml-9">
+          <a href="https://chat.whatsapp.com/HVlcLTdjQMmKCG0zF0Gk1j" target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg font-semibold transition-colors">
+            WhatsApp Acción Directa →
+          </a>
+        </div>
+      </div>
+
+      {/* Stats */}
+      {!loading && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+          <div className="bg-slate-50 rounded-xl p-4 text-center">
+            <p className="text-3xl font-black text-red-600">{volunteers.length}</p>
+            <p className="text-xs text-slate-500 mt-1">Voluntarios registrados</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-4 text-center">
+            <p className="text-3xl font-black text-slate-900">{withVehicle}</p>
+            <p className="text-xs text-slate-500 mt-1">Con vehículo propio</p>
+          </div>
+          <div className="bg-slate-50 rounded-xl p-4 text-center col-span-2 sm:col-span-1">
+            <p className="text-3xl font-black text-blue-700">
+              {volunteers.filter((v) => v.group_affiliation).length}
+            </p>
+            <p className="text-xs text-slate-500 mt-1">Con grupo coordinado</p>
+          </div>
+        </div>
+      )}
+
+      {/* Register CTA */}
+      {!showForm && (
+        <div className="mb-6">
+          {success && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-3 text-sm text-emerald-800">
+              ¡Registrado! El equipo coordinador puede contactarte si se necesita alguien con tu perfil.
+            </div>
+          )}
+          <button onClick={() => setShowForm(true)} className="btn-primary">
+            Registrarme como voluntario presencial
+          </button>
+        </div>
+      )}
+
+      {/* Registration form */}
+      {showForm && (
+        <form onSubmit={(e) => void handleSubmit(e)} className="card mb-6">
+          <h3 className="text-base font-black text-slate-900 mb-4">Tu registro</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="label" htmlFor="ov_name">Nombre completo</label>
+              <input id="ov_name" required className="input" value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="label" htmlFor="ov_origin">¿Desde dónde te desplazas?</label>
+              <input id="ov_origin" required className="input" value={form.origin_location} onChange={(e) => setForm({ ...form, origin_location: e.target.value })} placeholder="Caracas / Barcelona / Madrid..." />
+            </div>
+            <div>
+              <label className="label" htmlFor="ov_date">Disponible a partir de</label>
+              <input id="ov_date" type="date" required className="input" value={form.available_from} onChange={(e) => setForm({ ...form, available_from: e.target.value })} />
+            </div>
+            <div>
+              <label className="label" htmlFor="ov_contact">WhatsApp o email</label>
+              <input id="ov_contact" required className="input" value={form.contact} onChange={(e) => setForm({ ...form, contact: e.target.value })} placeholder="+34 600..." />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="label" htmlFor="ov_skills">¿Qué puedes hacer? Habilidades / experiencia</label>
+              <textarea id="ov_skills" required rows={2} className="input resize-none" value={form.skills} onChange={(e) => setForm({ ...form, skills: e.target.value })} placeholder="Médico, conductor 4x4, albañil, psicólogo, cocinero..." />
+            </div>
+            <div>
+              <label className="label" htmlFor="ov_group">Grupo / organización (si tienes)</label>
+              <input id="ov_group" className="input" value={form.group_affiliation} onChange={(e) => setForm({ ...form, group_affiliation: e.target.value })} placeholder="UCV, Cruz Roja, ninguno..." />
+            </div>
+            <div className="flex items-center gap-3 pt-5">
+              <input
+                id="ov_vehicle"
+                type="checkbox"
+                checked={form.has_vehicle}
+                onChange={(e) => setForm({ ...form, has_vehicle: e.target.checked })}
+                className="w-4 h-4 accent-red-600"
+              />
+              <label htmlFor="ov_vehicle" className="text-sm text-slate-700">Tengo vehículo propio</label>
+            </div>
+          </div>
+
+          {/* Safety acknowledgement — required */}
+          <div className={`rounded-xl border-2 p-4 mb-4 transition-colors ${form.acknowledged_safety ? 'border-emerald-400 bg-emerald-50' : 'border-amber-300 bg-amber-50'}`}>
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.acknowledged_safety}
+                onChange={(e) => setForm({ ...form, acknowledged_safety: e.target.checked })}
+                className="w-4 h-4 accent-red-600 mt-0.5 shrink-0"
+              />
+              <span className="text-sm text-slate-800 leading-relaxed">
+                <strong>He leído las instrucciones de seguridad.</strong> Entiendo que NO debo desplazarme solo ni sin coordinar previamente con un grupo organizado. Me comprometo a coordinar con otros voluntarios antes de acudir a la zona afectada.
+              </span>
+            </label>
+          </div>
+
+          {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
+          <div className="flex gap-3">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1 text-sm">Cancelar</button>
+            <button type="submit" disabled={submitting || !form.acknowledged_safety} className="btn-primary flex-1 text-sm disabled:opacity-40">
+              {submitting ? 'Registrando...' : 'Confirmar registro'}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Volunteer list */}
+      {loading ? (
+        <p className="text-slate-400 text-sm py-6 text-center">Cargando...</p>
+      ) : volunteers.length === 0 ? (
+        <p className="text-slate-400 text-sm py-6 text-center">Sé el primero en registrarte.</p>
+      ) : (
+        <>
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Voluntarios registrados</h3>
+          <div className="space-y-2">
+            {volunteers.map((v) => (
+              <div key={v.id} className="flex items-start gap-3 bg-slate-50 rounded-xl px-4 py-3">
+                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-sm font-bold text-red-700 shrink-0">
+                  {v.full_name.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 text-sm">{v.full_name}</p>
+                  <p className="text-xs text-slate-500">
+                    📍 {v.origin_location}
+                    {v.has_vehicle ? ' · 🚗 Con vehículo' : ''}
+                    {v.group_affiliation ? ` · ${v.group_affiliation}` : ''}
+                  </p>
+                  <p className="text-xs text-slate-600 mt-0.5 truncate">{v.skills}</p>
+                </div>
+                <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">
+                  Desde {new Date(v.available_from).toLocaleDateString('es', { day: 'numeric', month: 'short' })}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-type Tab = 'iniciativas' | 'habilidades'
+type Tab = 'iniciativas' | 'habilidades' | 'presencial'
 
 export default function VoluntariosPage() {
   const [tab, setTab] = useState<Tab>('iniciativas')
@@ -558,26 +773,34 @@ export default function VoluntariosPage() {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="mb-8">
         <h1 className="text-3xl font-black text-slate-900 mb-2">Voluntarios</h1>
-        <p className="text-slate-500">Conecta con iniciativas activas o publica tu habilidad.</p>
+        <p className="text-slate-500">Conecta con iniciativas activas, publica tu habilidad, o regístrate para ir en persona.</p>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-8 w-fit">
+      <div className="flex flex-wrap gap-1 bg-slate-100 rounded-xl p-1 mb-8 w-fit">
         <button
           onClick={() => setTab('iniciativas')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${tab === 'iniciativas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${tab === 'iniciativas' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           📋 Iniciativas activas
         </button>
         <button
+          onClick={() => setTab('presencial')}
+          className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${tab === 'presencial' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+        >
+          🚶 Ir en persona
+        </button>
+        <button
           onClick={() => setTab('habilidades')}
-          className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-colors ${tab === 'habilidades' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+          className={`px-4 py-2.5 rounded-lg text-sm font-bold transition-colors ${tab === 'habilidades' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
         >
           🙋 Ofrece tu habilidad
         </button>
       </div>
 
-      {tab === 'iniciativas' ? <InitiativesTab /> : <SkillsTab />}
+      {tab === 'iniciativas' && <InitiativesTab />}
+      {tab === 'presencial' && <OnsiteTab />}
+      {tab === 'habilidades' && <SkillsTab />}
     </div>
   )
 }
