@@ -43,9 +43,6 @@ export default function NavBar() {
           <Link href="/peticiones" className="text-slate-600 hover:text-slate-900 transition-colors">
             {t('nav.peticiones')}
           </Link>
-          <Link href="/agregar" className="text-slate-600 hover:text-slate-900 transition-colors">
-            {t('nav.agregar')}
-          </Link>
           <button
             onClick={toggleLanguage}
             className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold hover:border-slate-400 transition-colors"
@@ -104,9 +101,6 @@ export default function NavBar() {
           </Link>
           <Link href="/peticiones" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
             {t('nav.peticiones')}
-          </Link>
-          <Link href="/agregar" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
-            {t('nav.agregar')}
           </Link>
         </div>
       )}
