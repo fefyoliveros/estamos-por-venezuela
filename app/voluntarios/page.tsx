@@ -78,6 +78,24 @@ const INITIAL_SKILL_FORM = {
 
 const URGENCY_LEVELS: UrgencyLevel[] = ['critical', 'high', 'medium', 'low']
 
+const COMMON_RESOURCES: { label: string; emoji: string }[] = [
+  { label: 'Agua potable', emoji: '💧' },
+  { label: 'Alimentos no perecederos', emoji: '🥫' },
+  { label: 'Medicamentos básicos', emoji: '💊' },
+  { label: 'Suero oral / solución salina', emoji: '🧪' },
+  { label: 'Botiquín primeros auxilios', emoji: '🩹' },
+  { label: 'Mantas', emoji: '🛏' },
+  { label: 'Ropa limpia', emoji: '👕' },
+  { label: 'Carpas / toldos', emoji: '⛺' },
+  { label: 'Linternas y pilas', emoji: '🔦' },
+  { label: 'Voluntarios médicos', emoji: '🏥' },
+  { label: 'Voluntarios nocturnos', emoji: '🌙' },
+  { label: 'Conductores con vehículo', emoji: '🚗' },
+  { label: 'Apoyo psicológico', emoji: '🧠' },
+  { label: 'Pañales', emoji: '👶' },
+  { label: 'Sillas de ruedas / muletas', emoji: '♿' },
+]
+
 const INITIAL_NEED_FORM = {
   updated_by: '', location_context: '', needs_description: '', urgency_level: 'medium' as UrgencyLevel,
 }
@@ -414,30 +432,42 @@ function ParticiparButton({ initiative }: { initiative: VolunteerInitiative }) {
 // ── Initiatives tab ───────────────────────────────────────────────────────────
 
 function InitiativesTab() {
-  const [initiatives, setInitiatives] = useState<VolunteerInitiative[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [activeCategory, setActive]   = useState<InitiativeCategory | 'all'>('all')
-  const [showPostForm, setShowForm]   = useState(false)
-  const [postSuccess, setPostSuccess] = useState(false)
-  const [postForm, setPostForm]       = useState({
+  const [allInitiatives, setAllInitiatives] = useState<VolunteerInitiative[]>([])
+  const [loading, setLoading]               = useState(true)
+  const [activeCategory, setActive]         = useState<InitiativeCategory | 'all'>('all')
+  const [locationFilter, setLocationFilter] = useState('')
+  const [modeFilter, setModeFilter]         = useState<'all' | 'online' | 'onsite'>('all')
+  const [showPostForm, setShowForm]         = useState(false)
+  const [postSuccess, setPostSuccess]       = useState(false)
+  const [postForm, setPostForm]             = useState({
     title: '', description: '', location: '', coordinator_name: '',
     coordinator_contact: '', category: 'coordination' as InitiativeCategory,
     is_onsite: false,
   })
-  const [posting, setPosting]         = useState(false)
-  const [postError, setPostError]     = useState('')
-  const [initialNeeds, setInitialNeeds] = useState<Array<{ needs_description: string; urgency_level: UrgencyLevel }>>([])
+  const [posting, setPosting]               = useState(false)
+  const [postError, setPostError]           = useState('')
+  const [initialNeeds, setInitialNeeds]     = useState<Array<{ needs_description: string; urgency_level: UrgencyLevel }>>([])
 
   const fetchInitiatives = useCallback(async () => {
     setLoading(true)
     const res = await fetch('/api/initiatives')
     const json = await res.json() as { data: VolunteerInitiative[] }
-    const all = json.data ?? []
-    setInitiatives(activeCategory === 'all' ? all : all.filter((i) => i.category === activeCategory))
+    setAllInitiatives(json.data ?? [])
     setLoading(false)
-  }, [activeCategory])
+  }, [])
 
   useEffect(() => { void fetchInitiatives() }, [fetchInitiatives])
+
+  const initiatives = allInitiatives.filter((i) => {
+    if (activeCategory !== 'all' && i.category !== activeCategory) return false
+    if (modeFilter === 'onsite' && !i.is_onsite) return false
+    if (modeFilter === 'online' && i.is_onsite) return false
+    if (locationFilter.trim()) {
+      const q = locationFilter.trim().toLowerCase()
+      if (!i.location.toLowerCase().includes(q)) return false
+    }
+    return true
+  })
 
   async function handlePost(e: React.FormEvent) {
     e.preventDefault()
@@ -553,7 +583,19 @@ function InitiativesTab() {
             <div className="sm:col-span-2">
               <div className="border-t border-slate-100 pt-4">
                 <p className="text-sm font-bold text-slate-900 mb-0.5">Recursos y materiales necesarios</p>
-                <p className="text-xs text-slate-400 mb-3">Opcional. Aparecerán resaltados en la tarjeta para que los voluntarios sepan qué traer o qué se necesita.</p>
+                <p className="text-xs text-slate-400 mb-3">Opcional. Aparecerán resaltados en la tarjeta. Haz clic para añadir un recurso común, o escribe el tuyo abajo.</p>
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {COMMON_RESOURCES.map((r) => (
+                    <button
+                      key={r.label}
+                      type="button"
+                      onClick={() => setInitialNeeds([...initialNeeds, { needs_description: r.label, urgency_level: 'medium' }])}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs border border-slate-200 bg-white hover:border-red-300 hover:bg-red-50 hover:text-red-700 transition-colors text-slate-600 cursor-pointer"
+                    >
+                      {r.emoji} {r.label}
+                    </button>
+                  ))}
+                </div>
                 <div className="space-y-2 mb-3">
                   {initialNeeds.map((need, i) => (
                     <div key={i} className="flex gap-2 items-start">
@@ -612,31 +654,68 @@ function InitiativesTab() {
         </form>
       )}
 
-      {/* Category filters */}
-      <div className="flex flex-wrap gap-2 mb-5">
-        <button
-          onClick={() => setActive('all')}
-          className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeCategory === 'all' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
-        >
-          🌐 Todas
-        </button>
-        {categories.map(([val, meta]) => (
+      {/* Filters */}
+      <div className="space-y-2.5 mb-5">
+        <div className="flex flex-wrap gap-2 items-center">
+          <input
+            type="text"
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            placeholder="🔍 Buscar por ubicación..."
+            className="input text-xs flex-1 min-w-[160px] max-w-xs"
+          />
+          <div className="flex gap-1.5 shrink-0">
+            {(['all', 'online', 'onsite'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setModeFilter(m)}
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${modeFilter === m ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+              >
+                {m === 'all' ? 'Todas' : m === 'online' ? '💻 Online' : '🚶 Presencial'}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
           <button
-            key={val}
-            onClick={() => setActive(val)}
-            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeCategory === val ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+            onClick={() => setActive('all')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeCategory === 'all' ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
           >
-            {meta.emoji} {meta.label}
+            📋 Todas las categorías
           </button>
-        ))}
+          {categories.map(([val, meta]) => (
+            <button
+              key={val}
+              onClick={() => setActive(val)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${activeCategory === val ? 'bg-red-600 text-white border-red-600' : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'}`}
+            >
+              {meta.emoji} {meta.label}
+            </button>
+          ))}
+        </div>
+        {(locationFilter || activeCategory !== 'all' || modeFilter !== 'all') && (
+          <p className="text-xs text-slate-400">
+            {initiatives.length} resultado{initiatives.length !== 1 ? 's' : ''}
+            {' '}
+            <button onClick={() => { setLocationFilter(''); setActive('all'); setModeFilter('all') }} className="text-red-500 hover:text-red-700 underline">
+              Limpiar filtros
+            </button>
+          </p>
+        )}
       </div>
 
       {loading ? (
         <p className="text-slate-400 text-sm py-8 text-center">Cargando iniciativas...</p>
       ) : initiatives.length === 0 ? (
         <div className="text-center py-10">
-          <p className="text-slate-400 mb-3">No hay iniciativas en esta categoría.</p>
-          <button onClick={() => setShowForm(true)} className="btn-secondary text-sm">Sé el primero en publicar</button>
+          <p className="text-slate-400 mb-3">
+            {locationFilter || activeCategory !== 'all' || modeFilter !== 'all'
+              ? 'No hay iniciativas que coincidan con los filtros.'
+              : 'No hay iniciativas publicadas aún.'}
+          </p>
+          {!locationFilter && activeCategory === 'all' && modeFilter === 'all' && (
+            <button onClick={() => setShowForm(true)} className="btn-secondary text-sm">Sé el primero en publicar</button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
