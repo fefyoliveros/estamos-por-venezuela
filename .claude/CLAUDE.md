@@ -4,7 +4,7 @@
 - Next.js 14 (App Router), TypeScript strict, Tailwind CSS
 - Supabase (PostgreSQL + RLS + Auth for admin only)
 - Gemini 1.5 Flash API (questionnaire routing + submission verification)
-- Vercel deployment — domain: vezlayuda.com
+- Vercel deployment — domain: estamosporvenezuela.com
 - i18n: React Context (Spanish primary, English toggle)
 
 ## Principles
