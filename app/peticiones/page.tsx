@@ -87,15 +87,20 @@ export default function PeticionesPage() {
           <p className="text-sm text-slate-300 leading-relaxed">
             Si tienes una antena Starlink, puedes salvar vidas. Las personas atrapadas pueden conectarse desde un TikTok Live, indicar que están vivas y compartir su ubicación exacta. Contacta a los equipos de rescate para coordinar el préstamo de tu antena.
           </p>
-          <a
-            href="https://wa.me/?text=Tengo+una+antena+Starlink+y+quiero+apoyar+en+la+emergencia+de+Venezuela"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white text-slate-900 font-bold text-sm rounded-lg hover:bg-slate-100 transition-colors"
-          >
-            <WhatsAppIcon />
-            Tengo Starlink — quiero ayudar
-          </a>
+          <div className="flex flex-wrap gap-2 mt-3">
+            <a
+              href="https://instagram.com/ccnlasmercedes"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-white text-slate-900 font-bold text-sm rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              📸 @ccnlasmercedes
+            </a>
+            <span className="inline-flex items-center text-sm text-slate-300">o</span>
+            <span className="inline-flex items-center text-sm text-slate-200 leading-snug">
+              lleva tu antena directamente a los sitios de rescate más cercanos
+            </span>
+          </div>
         </div>
       </div>
 
