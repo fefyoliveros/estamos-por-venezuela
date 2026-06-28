@@ -60,7 +60,7 @@ export default async function HomePage() {
           </Link>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link href="/asistente" className="px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors text-sm">
+            <Link href="/voluntarios" className="px-6 py-3 rounded-lg bg-white text-slate-900 font-semibold hover:bg-slate-100 transition-colors text-sm">
               {t['home.hero.cta.help']}
             </Link>
             <Link href="/donaciones" className="px-6 py-3 rounded-lg bg-yellow-400 text-slate-900 font-semibold hover:bg-yellow-300 transition-colors text-sm">
