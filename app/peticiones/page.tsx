@@ -96,7 +96,9 @@ export default function PeticionesPage() {
   const [resolved, setResolved] = useState<HelpRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<NeedType | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [showAllResolved, setShowAllResolved] = useState(false)
   const [updating, setUpdating] = useState<Record<string, boolean>>({})
   const [resolutionOpen, setResolutionOpen] = useState<string | null>(null)
   const [resolutionDraft, setResolutionDraft] = useState<ResolutionDraft>({ type: 'found', notes: '' })
@@ -119,7 +121,15 @@ export default function PeticionesPage() {
     return () => clearInterval(timer)
   }, [fetchAll])
 
-  const filtered = filter === 'all' ? requests : requests.filter((r) => r.needs.includes(filter))
+  const q = searchQuery.trim().toLowerCase()
+  const byNeed = filter === 'all' ? requests : requests.filter((r) => r.needs.includes(filter))
+  const filtered = q
+    ? byNeed.filter((r) =>
+        r.full_name.toLowerCase().includes(q) ||
+        r.location.toLowerCase().includes(q) ||
+        (r.details ?? '').toLowerCase().includes(q)
+      )
+    : byNeed
   const visible = filtered.slice(0, visibleCount)
   const hasMore = filtered.length > visibleCount
   const trapped = requests.filter((r) => r.needs.includes('trapped'))
@@ -145,6 +155,10 @@ export default function PeticionesPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     })
+    if (payload.status === 'resolved') {
+      // Optimistic: remove from active list immediately
+      setRequests((prev) => prev.filter((r) => r.id !== id))
+    }
     await fetchAll()
     setUpdating((u) => ({ ...u, [id]: false }))
   }
@@ -256,6 +270,27 @@ export default function PeticionesPage() {
         </Link>
       </div>
 
+      {/* Search bar */}
+      <div className="mb-4">
+        <div className="relative">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm select-none">🔎</span>
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => { setSearchQuery(e.target.value); setVisibleCount(PAGE_SIZE) }}
+            placeholder="Busca por nombre, edificio o dirección antes de publicar..."
+            className="w-full pl-9 pr-4 py-2.5 text-sm border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-slate-300 bg-white"
+          />
+        </div>
+        {searchQuery.trim() && (
+          <p className="text-xs text-slate-400 mt-1.5 ml-1">
+            {filtered.length === 0
+              ? 'No se encontró nada — puedes publicar una nueva solicitud.'
+              : `${filtered.length} resultado${filtered.length !== 1 ? 's' : ''} — si ya está publicado, actualiza la urgencia o el estado en vez de duplicar.`}
+          </p>
+        )}
+      </div>
+
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
         {NEED_FILTERS.map((f) => (
@@ -273,12 +308,12 @@ export default function PeticionesPage() {
             {f.label}
           </button>
         ))}
-        {filter !== 'all' && (
+        {(filter !== 'all' || searchQuery) && (
           <button
-            onClick={() => setFilter('all')}
+            onClick={() => { setFilter('all'); setSearchQuery('') }}
             className="text-xs text-slate-400 hover:text-slate-700 underline px-1"
           >
-            Limpiar
+            Limpiar filtros
           </button>
         )}
       </div>
@@ -287,14 +322,19 @@ export default function PeticionesPage() {
         <div className="text-center py-16 text-slate-400">Cargando solicitudes...</div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16">
-          <p className="text-slate-400 mb-4">No hay solicitudes en esta categoría.</p>
+          <p className="text-slate-400 mb-1">
+            {searchQuery.trim() ? `Sin resultados para "${searchQuery.trim()}"` : 'No hay solicitudes en esta categoría.'}
+          </p>
+          {searchQuery.trim() && (
+            <p className="text-xs text-slate-400 mb-4">Esta dirección o persona no está publicada todavía.</p>
+          )}
           <Link href="/necesito-ayuda" className="btn-primary text-sm">
             Publicar una solicitud
           </Link>
         </div>
       ) : (
         <>
-          {filter !== 'all' && (
+          {(filter !== 'all' || searchQuery) && (
             <p className="text-xs text-slate-400 mb-4">
               {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
             </p>
@@ -483,50 +523,52 @@ export default function PeticionesPage() {
         </div>
       )}
 
-      {/* Outcomes log */}
+      {/* Outcomes log — compact */}
       {resolved.length > 0 && (
         <section className="mt-2">
-          <div className="border-t border-slate-100 pt-8">
-            <h2 className="text-lg font-black text-slate-900 mb-1">Registro de actualizaciones</h2>
-            <p className="text-xs text-slate-500 mb-5">
-              {resolved.length} solicitude{resolved.length !== 1 ? 's' : ''} con estado actualizado.
-              Ayuda a mantener este registro preciso.
-            </p>
-            <div className="space-y-3">
-              {resolved.map((req) => {
+          <div className="border-t border-slate-100 pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <h2 className="text-base font-black text-slate-900">Registro de actualizaciones</h2>
+                <p className="text-xs text-slate-400 mt-0.5">{resolved.length} solicitud{resolved.length !== 1 ? 'es' : ''} resuelta{resolved.length !== 1 ? 's' : ''}</p>
+              </div>
+              {resolved.length > 5 && (
+                <button
+                  onClick={() => setShowAllResolved((v) => !v)}
+                  className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline"
+                >
+                  {showAllResolved ? 'Ver menos' : `Ver todas (${resolved.length})`}
+                </button>
+              )}
+            </div>
+            <div className="divide-y divide-slate-100 rounded-xl border border-slate-100 overflow-hidden">
+              {(showAllResolved ? resolved : resolved.slice(0, 5)).map((req) => {
                 const rt = req.resolution_type
+                const icon = rt === 'found' ? '✓' : rt === 'deceased' ? '✝' : rt === 'evacuated' ? '🚁' : '✓'
+                const bgRow = rt === 'deceased' ? 'bg-slate-50' : rt === 'found' || rt === 'evacuated' ? 'bg-emerald-50' : 'bg-white'
                 return (
-                  <div
-                    key={req.id}
-                    className={`flex items-start gap-3 p-3 rounded-xl border ${
-                      rt === 'deceased'
-                        ? 'bg-slate-50 border-slate-200'
-                        : rt === 'found' || rt === 'evacuated'
-                        ? 'bg-emerald-50 border-emerald-200'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <span className="text-lg shrink-0 mt-0.5">
-                      {rt === 'found' ? '✓' : rt === 'deceased' ? '✝' : rt === 'evacuated' ? '🚁' : '✓'}
+                  <div key={req.id} className={`flex items-center gap-3 px-3 py-2 ${bgRow}`}>
+                    <span className={`text-xs font-bold shrink-0 w-4 text-center ${rt ? RESOLUTION_COLORS[rt] : 'text-slate-400'}`}>
+                      {icon}
                     </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
-                        <p className="font-bold text-sm text-slate-900">{req.full_name}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-semibold text-xs text-slate-900 truncate">{req.full_name}</span>
                         {rt && (
-                          <span className={`text-xs font-semibold ${RESOLUTION_COLORS[rt]}`}>
+                          <span className={`text-[10px] font-semibold shrink-0 ${RESOLUTION_COLORS[rt]}`}>
                             {RESOLUTION_LABELS[rt]}
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500">📍 {req.location}</p>
-                      {req.resolution_notes && (
-                        <p className="text-xs text-slate-600 mt-1">{req.resolution_notes}</p>
-                      )}
-                      {req.resolved_at && (
-                        <p className="text-[10px] text-slate-400 mt-1">
-                          Actualizado: {formatDate(req.resolved_at)}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-[10px] text-slate-400 truncate">📍 {req.location}</span>
+                        {req.resolution_notes && (
+                          <span className="text-[10px] text-slate-500 truncate hidden sm:block">· {req.resolution_notes}</span>
+                        )}
+                        {req.resolved_at && (
+                          <span className="text-[10px] text-slate-400 shrink-0 ml-auto hidden sm:block">{formatDate(req.resolved_at)}</span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )
