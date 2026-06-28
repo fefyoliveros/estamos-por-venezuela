@@ -27,7 +27,8 @@ export function GET() {
           method: 'GET',
           description: 'Solicitudes de ayuda activas: personas atrapadas, necesidades médicas, rescates.',
           params: [],
-          returns: 'id, full_name, location, needs, details, status, created_at',
+          returns: 'id, full_name, location, needs, details, whatsapp, status, created_at',
+          note: 'whatsapp puede ser null. Cuando está presente, el solicitante consintió publicarlo para ser contactado directamente.',
         },
         {
           path: '/api/initiatives',

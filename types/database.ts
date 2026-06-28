@@ -59,6 +59,7 @@ export interface HelpRequest {
   location: string
   needs: NeedType[]
   details: string | null
+  whatsapp: string | null
   status: HelpRequestStatus
   created_at: string
 }

@@ -547,8 +547,8 @@ function InitiativesTab() {
               <textarea required rows={3} className="input resize-none" value={postForm.description} onChange={(e) => setPostForm({ ...postForm, description: e.target.value })} />
             </div>
             <div>
-              <label className="label">Ubicación</label>
-              <input required className="input" value={postForm.location} onChange={(e) => setPostForm({ ...postForm, location: e.target.value })} placeholder="Barcelona / Online / Venezuela" />
+              <label className="label">Ubicación (ciudad, país, o "Online" si es remota)</label>
+              <input required className="input" value={postForm.location} onChange={(e) => setPostForm({ ...postForm, location: e.target.value })} placeholder="Caracas / Online / Barcelona" />
             </div>
             <div>
               <label className="label">Categoría</label>
@@ -563,8 +563,8 @@ function InitiativesTab() {
               <input required className="input" value={postForm.coordinator_name} onChange={(e) => setPostForm({ ...postForm, coordinator_name: e.target.value })} />
             </div>
             <div>
-              <label className="label">Contacto (WhatsApp, email, web)</label>
-              <input required className="input" value={postForm.coordinator_contact} onChange={(e) => setPostForm({ ...postForm, coordinator_contact: e.target.value })} placeholder="+34 600... / tu@email.com" />
+              <label className="label">WhatsApp del coordinador (con prefijo de país)</label>
+              <input required type="tel" className="input" value={postForm.coordinator_contact} onChange={(e) => setPostForm({ ...postForm, coordinator_contact: e.target.value })} placeholder="+34 600 000 000 o +58 412 000 0000" />
             </div>
             <div className="sm:col-span-2 flex items-center gap-3 pt-1">
               <input

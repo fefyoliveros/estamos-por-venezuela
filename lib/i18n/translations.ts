@@ -172,6 +172,7 @@ export const translations = {
     'nav.donaciones': 'Donar',
     'nav.mapa': 'Mapa',
     'nav.voluntarios': 'Voluntarios',
+    'nav.peticiones': 'Peticiones',
 
     // Home new sections
     'home.urgent.title': 'Se necesita AHORA',
@@ -362,6 +363,7 @@ export const translations = {
     'nav.donaciones': 'Donate',
     'nav.mapa': 'Map',
     'nav.voluntarios': 'Volunteers',
+    'nav.peticiones': 'Help Requests',
 
     // Home new sections
     'home.urgent.title': 'Needed RIGHT NOW',

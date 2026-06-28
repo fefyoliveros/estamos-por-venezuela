@@ -10,7 +10,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from('help_requests')
-    .select('*')
+    .select('id, full_name, location, needs, details, whatsapp, status, created_at')
     .eq('status', 'active')
     .order('created_at', { ascending: false })
     .limit(100)
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   const body = await request.json() as Partial<HelpRequestInsert>
-  const { full_name, location, needs, details } = body
+  const { full_name, location, needs, details, whatsapp } = body
 
   if (!full_name || !location || !needs || needs.length === 0) {
     return NextResponse.json(
@@ -35,21 +35,20 @@ export async function POST(request: Request) {
 
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('help_requests')
     .insert({
       full_name,
       location,
       needs,
       details: details ?? null,
+      whatsapp: whatsapp ?? null,
       status: 'active',
     })
-    .select()
-    .single()
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data }, { status: 201 })
+  return NextResponse.json({ ok: true }, { status: 201 })
 }
