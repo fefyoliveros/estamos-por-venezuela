@@ -997,7 +997,6 @@ const INITIAL_ONSITE = {
 
 function OnsiteTab() {
   const [volunteers, setVolunteers]         = useState<OnsiteVolunteer[]>([])
-  const [onsiteInitiatives, setOnsiteInit]  = useState<VolunteerInitiative[]>([])
   const [loading, setLoading]               = useState(true)
   const [showForm, setShowForm]             = useState(false)
   const [form, setForm]                     = useState(INITIAL_ONSITE)
@@ -1006,13 +1005,10 @@ function OnsiteTab() {
   const [error, setError]                   = useState('')
 
   useEffect(() => {
-    Promise.all([
-      fetch('/api/onsite-volunteers').then((r) => r.json() as Promise<{ data: OnsiteVolunteer[] }>),
-      fetch('/api/initiatives?onsite=true').then((r) => r.json() as Promise<{ data: VolunteerInitiative[] }>),
-    ])
-      .then(([ovJson, initJson]) => {
+    fetch('/api/onsite-volunteers')
+      .then((r) => r.json() as Promise<{ data: OnsiteVolunteer[] }>)
+      .then((ovJson) => {
         setVolunteers(ovJson.data ?? [])
-        setOnsiteInit(initJson.data ?? [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -1174,30 +1170,6 @@ function OnsiteTab() {
         </form>
       )}
 
-      {/* In-person initiatives needing volunteers */}
-      {!loading && onsiteInitiatives.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-sm font-bold text-slate-700 mb-3">Iniciativas que buscan voluntarios presenciales</h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {onsiteInitiatives.map((initiative) => {
-              const catMeta = INITIATIVE_CATEGORY_LABELS[initiative.category]
-              return (
-                <div key={initiative.id} className="card flex flex-col">
-                  <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full mb-2 w-fit">
-                    {catMeta.emoji} {catMeta.label}
-                  </span>
-                  <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">{initiative.title}</h4>
-                  <p className="text-xs text-slate-500 mb-2">📍 {initiative.location} · {initiative.coordinator_name}</p>
-                  <p className="text-xs text-slate-600 leading-relaxed mb-3 flex-1">{initiative.description}</p>
-                  <ParticiparButton initiative={initiative} />
-                  <NeedsPanel initiativeId={initiative.id} />
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
       {/* Volunteer list */}
       {loading ? (
         <p className="text-slate-400 text-sm py-6 text-center">Cargando...</p>
@@ -1272,6 +1244,35 @@ export default function VoluntariosPage() {
       {tab === 'iniciativas' && <InitiativesTab />}
       {tab === 'presencial' && <OnsiteTab />}
       {tab === 'habilidades' && <SkillsTab />}
+
+      {/* Digital volunteers */}
+      <div className="mt-12 border-t border-slate-100 pt-8">
+        <h2 className="text-xl font-black text-slate-900 mb-1">Voluntariado digital</h2>
+        <p className="text-sm text-slate-500 mb-5">¿No puedes ir en persona? También puedes ayudar desde casa.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="card border border-slate-200">
+            <p className="text-2xl mb-2">📊</p>
+            <h3 className="font-bold text-slate-900 text-sm mb-1">Actualiza datos del directorio</h3>
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">Ayuda a mantener al día los recursos del directorio: ONGs, centros de acopio, campañas. Sin conocimientos técnicos.</p>
+            <a href="/agregar" className="inline-block text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-3 py-1.5 rounded-lg hover:bg-blue-100 transition-colors">
+              Proponer un recurso →
+            </a>
+          </div>
+          <div className="card border border-slate-200">
+            <p className="text-2xl mb-2">💻</p>
+            <h3 className="font-bold text-slate-900 text-sm mb-1">Corrige bugs en GitHub</h3>
+            <p className="text-xs text-slate-500 mb-3 leading-relaxed">Esta plataforma es open source. Si sabes programar, puedes arreglar bugs y mejorar la herramienta para todos.</p>
+            <a
+              href="https://github.com/fefyoliveros/estamos-por-venezuela"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block text-xs font-semibold text-slate-700 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+            >
+              Ver repositorio en GitHub →
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
