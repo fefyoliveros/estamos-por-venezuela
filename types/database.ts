@@ -186,6 +186,14 @@ export interface SupplyReport {
 
 export type SupplyReportInsert = Omit<SupplyReport, 'id' | 'active' | 'created_at'>
 
+export interface HubVote {
+  id: string
+  hub_id: string
+  vote_type: 'trust' | 'denounce'
+  reason: string | null
+  created_at: string
+}
+
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>
 export type HelpRequestInsert = Omit<HelpRequest, 'id' | 'created_at'>

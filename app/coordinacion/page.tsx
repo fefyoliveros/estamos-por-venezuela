@@ -3,6 +3,185 @@
 import { useState, useEffect, useCallback } from 'react'
 import type { SupplyHub, SupplyReport, UrgencyLevel, HubType, ReportType } from '@/types/database'
 
+// ── Hub vote panel ────────────────────────────────────────────────────────────
+
+function VotePanel({ hubId }: { hubId: string }) {
+  const [trust, setTrust]       = useState<number | null>(null)
+  const [denounce, setDenounce] = useState<number | null>(null)
+  const [denounceOpen, setDenounceOpen] = useState(false)
+  const [reason, setReason]     = useState('')
+  const [voted, setVoted]       = useState<'trust' | 'denounce' | null>(null)
+  const [error, setError]       = useState('')
+
+  useEffect(() => {
+    void fetch(`/api/supply-hubs/${hubId}/vote`)
+      .then(r => r.json())
+      .then((j: { trust?: number; denounce?: number }) => {
+        setTrust(j.trust ?? 0)
+        setDenounce(j.denounce ?? 0)
+      })
+  }, [hubId])
+
+  async function vote(type: 'trust' | 'denounce') {
+    setError('')
+    const res = await fetch(`/api/supply-hubs/${hubId}/vote`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vote_type: type, reason: type === 'denounce' ? reason : undefined }),
+    })
+    if (!res.ok) {
+      const j = await res.json() as { error?: string }
+      setError(j.error ?? 'Error')
+      return
+    }
+    if (type === 'trust') { setTrust(t => (t ?? 0) + 1) }
+    else { setDenounce(d => (d ?? 0) + 1) }
+    setVoted(type)
+    setDenounceOpen(false)
+    setReason('')
+  }
+
+  if (voted) return (
+    <p className="text-xs text-slate-400 pt-2 border-t border-slate-100 mt-2">
+      {voted === 'trust' ? '✅ Gracias por tu voto de confianza' : '🚩 Denuncia recibida. El equipo la revisará.'}
+    </p>
+  )
+
+  return (
+    <div className="border-t border-slate-100 pt-2 mt-2 space-y-2">
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => void vote('trust')}
+          className="inline-flex items-center gap-1 text-xs text-slate-500 hover:text-emerald-700 transition-colors"
+        >
+          👍 Confío {trust !== null ? <span className="font-semibold">({trust})</span> : null}
+        </button>
+        <span className="text-slate-200 text-xs">·</span>
+        <button
+          onClick={() => setDenounceOpen(v => !v)}
+          className="text-xs text-slate-400 hover:text-red-600 transition-colors"
+        >
+          🚩 Denunciar{denounce ? ` (${denounce})` : ''}
+        </button>
+      </div>
+      {denounceOpen && (
+        <div className="space-y-2">
+          <input
+            value={reason}
+            onChange={e => setReason(e.target.value)}
+            placeholder="Motivo de la denuncia (obligatorio)..."
+            className="input text-xs"
+          />
+          {error && <p className="text-red-600 text-xs">{error}</p>}
+          <div className="flex gap-3">
+            <button onClick={() => { setDenounceOpen(false); setReason('') }} className="text-xs text-slate-500 hover:text-slate-700">Cancelar</button>
+            <button
+              onClick={() => reason.trim() && void vote('denounce')}
+              disabled={!reason.trim()}
+              className="text-xs font-semibold text-red-600 hover:text-red-800 disabled:opacity-40"
+            >
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Hub submit form ───────────────────────────────────────────────────────────
+
+const INIT_HUB_FORM = {
+  name: '', hub_type: 'hospital' as HubType, location: '', city: '',
+  contact_name: '', contact_whatsapp: '', description: '',
+}
+
+function HubSubmitForm({ onSuccess, onCancel }: { onSuccess: () => void; onCancel: () => void }) {
+  const [form, setForm]       = useState(INIT_HUB_FORM)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError]     = useState('')
+  const [done, setDone]       = useState(false)
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!form.name.trim() || !form.location.trim()) { setError('Nombre y ubicación son obligatorios.'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch('/api/supply-hubs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const j = await res.json() as { error?: string }
+        throw new Error(j.error ?? 'Error')
+      }
+      setDone(true)
+      onSuccess()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (done) return (
+    <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-5 text-center">
+      <p className="font-bold text-emerald-800 mb-1">¡Centro añadido!</p>
+      <p className="text-xs text-emerald-700 mb-3">Aparece en la lista con la etiqueta "Sin verificar". La comunidad podrá votarlo.</p>
+      <button onClick={onCancel} className="text-xs text-emerald-600 hover:underline">Cerrar</button>
+    </div>
+  )
+
+  return (
+    <form onSubmit={(e) => void handleSubmit(e)} className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4">
+      <h3 className="font-black text-slate-900">Añadir nuevo centro</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="sm:col-span-2">
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Nombre del centro *</label>
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} className="input text-sm" required placeholder="Hospital General / Centro de Acopio XYZ" />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Tipo *</label>
+          <select value={form.hub_type} onChange={e => setForm(f => ({ ...f, hub_type: e.target.value as HubType }))} className="input text-sm">
+            <option value="hospital">🏥 Hospital / Clínica</option>
+            <option value="collection_point">📦 Centro de Acopio</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Ciudad</label>
+          <input value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))} className="input text-sm" placeholder="Caracas" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Dirección / Ubicación *</label>
+          <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} className="input text-sm" required placeholder="Av. Principal, Urbanización..." />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Nombre del coordinador</label>
+          <input value={form.contact_name} onChange={e => setForm(f => ({ ...f, contact_name: e.target.value }))} className="input text-sm" placeholder="Dra. María García" />
+        </div>
+        <div>
+          <label className="text-xs font-semibold text-slate-600 block mb-1">WhatsApp</label>
+          <input value={form.contact_whatsapp} onChange={e => setForm(f => ({ ...f, contact_whatsapp: e.target.value }))} className="input text-sm" placeholder="+58 412 000 0000" type="tel" />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-semibold text-slate-600 block mb-1">Descripción (opcional)</label>
+          <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} className="input text-sm resize-none" rows={2} placeholder="Qué tipo de ayuda ofrecen o necesitan..." />
+        </div>
+      </div>
+      {error && <p className="text-red-600 text-xs">{error}</p>}
+      <p className="text-xs text-slate-400">El centro aparecerá inmediatamente con etiqueta "Sin verificar". La comunidad puede votarlo.</p>
+      <div className="flex gap-3">
+        <button type="button" onClick={onCancel} className="btn-secondary flex-1 text-sm">Cancelar</button>
+        <button type="submit" disabled={submitting} className="btn-primary flex-1 text-sm disabled:opacity-40">
+          {submitting ? 'Añadiendo...' : 'Añadir centro'}
+        </button>
+      </div>
+    </form>
+  )
+}
+
 // ── Icons ────────────────────────────────────────────────────────────────────
 
 function WhatsAppIcon() {
@@ -320,9 +499,10 @@ function HubCard({ hub }: { hub: SupplyHub }) {
           <h3 className="font-black text-slate-900 text-base leading-tight">
             {isHospital ? '🏥' : '📦'} {hub.name}
           </h3>
-          {hub.verified && (
-            <span className="shrink-0 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">✓ Verificado</span>
-          )}
+          {hub.verified
+            ? <span className="shrink-0 text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full font-semibold">✓ Verificado</span>
+            : <span className="shrink-0 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full font-semibold">⚠️ Sin verificar</span>
+          }
         </div>
         <p className="text-xs text-slate-500">📍 {hub.location}</p>
         {hub.description && (
@@ -362,6 +542,9 @@ function HubCard({ hub }: { hub: SupplyHub }) {
 
       {/* Reports */}
       <HubReportsPanel hub={hub} />
+
+      {/* Community trust / denounce */}
+      <VotePanel hubId={hub.id} />
     </div>
   )
 }
@@ -451,10 +634,12 @@ type Tab = 'hospital' | 'collection_point' | 'surplus'
 type CityFilter = 'all' | string
 
 export default function CoordinacionPage() {
-  const [hubs, setHubs]       = useState<SupplyHub[]>([])
-  const [loading, setLoading] = useState(true)
-  const [tab, setTab]         = useState<Tab>('hospital')
-  const [city, setCity]       = useState<CityFilter>('all')
+  const [hubs, setHubs]           = useState<SupplyHub[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [tab, setTab]             = useState<Tab>('hospital')
+  const [city, setCity]           = useState<CityFilter>('all')
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [refreshKey, setRefreshKey]   = useState(0)
 
   useEffect(() => {
     async function load() {
@@ -467,7 +652,7 @@ export default function CoordinacionPage() {
       setLoading(false)
     }
     void load()
-  }, [])
+  }, [refreshKey])
 
   const cities = ['all', ...Array.from(new Set(hubs.map(h => h.city).filter(Boolean) as string[])).sort()]
 
@@ -491,6 +676,25 @@ export default function CoordinacionPage() {
           Actualiza la lista de tu centro para que los voluntarios sepan exactamente qué llevar.
         </p>
       </div>
+
+      {/* Add hub form */}
+      {showAddForm ? (
+        <div className="mb-8">
+          <HubSubmitForm
+            onSuccess={() => { setShowAddForm(false); setRefreshKey(k => k + 1) }}
+            onCancel={() => setShowAddForm(false)}
+          />
+        </div>
+      ) : (
+        <div className="mb-6">
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="text-sm font-semibold border border-slate-300 text-slate-700 hover:border-slate-500 hover:bg-slate-50 transition-colors px-4 py-2 rounded-xl"
+          >
+            + Añadir hospital o centro de acopio
+          </button>
+        </div>
+      )}
 
       {/* How it works */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-8 flex gap-3">
@@ -554,16 +758,6 @@ export default function CoordinacionPage() {
         </div>
       )}
 
-      {/* Add new hub CTA */}
-      <div className="mt-12 border-t border-slate-100 pt-8 text-center">
-        <p className="text-slate-500 text-sm mb-2">¿Falta tu hospital o centro de acopio?</p>
-        <a
-          href="mailto:estamosporvenezuela@gmail.com?subject=Agregar centro de acopio&body=Nombre del centro:%0AUbicación:%0ATipo (hospital/centro de acopio):%0AContacto WhatsApp:%0ADescripción:"
-          className="inline-block text-sm font-semibold text-blue-600 hover:underline"
-        >
-          Escríbenos para agregarlo →
-        </a>
-      </div>
     </div>
   )
 }
