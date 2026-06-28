@@ -96,7 +96,7 @@ const TIER1: DonationOrg[] = [
 
 const TIER2: DonationOrg[] = [
   {
-    name: 'Yummi Rides — Donación alimentaria',
+    name: 'Yummy Rides — Donación alimentaria',
     description: 'Plataforma de centralización de donaciones de alimentos y coordinación de voluntarios presenciales en Venezuela.',
     url: 'https://dona.yummyrides.com',
     badge: 'Activa en Venezuela',
