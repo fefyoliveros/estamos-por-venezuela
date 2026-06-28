@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function GET() {
   const supabase = await createClient()
@@ -9,7 +9,8 @@ export async function GET() {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
+  const adminDb = await createAdminClient()
+  const { data, error } = await adminDb
     .from('submissions')
     .select('*')
     .eq('status', 'pending')
@@ -36,7 +37,9 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'id y action son obligatorios' }, { status: 400 })
   }
 
-  const { data: submission, error: fetchError } = await supabase
+  const adminDb = await createAdminClient()
+
+  const { data: submission, error: fetchError } = await adminDb
     .from('submissions')
     .select('*')
     .eq('id', id)
@@ -48,7 +51,7 @@ export async function PATCH(request: Request) {
 
   if (action === 'approve') {
     // Move to resources table
-    await supabase.from('resources').insert({
+    await adminDb.from('resources').insert({
       name: submission.name,
       type: submission.type,
       url: submission.url,
@@ -65,7 +68,7 @@ export async function PATCH(request: Request) {
     })
   }
 
-  const { error: updateError } = await supabase
+  const { error: updateError } = await adminDb
     .from('submissions')
     .update({ status: action === 'approve' ? 'approved' : 'rejected' })
     .eq('id', id)

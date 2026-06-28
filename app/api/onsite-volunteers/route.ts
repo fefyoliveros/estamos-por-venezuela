@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { PUBLIC_CORS_HEADERS, corsPreFlight } from '@/lib/cors'
+
+export function OPTIONS() { return corsPreFlight() }
 
 export async function GET() {
   const supabase = await createClient()
@@ -12,7 +15,7 @@ export async function GET() {
     .limit(200)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [], count: data?.length ?? 0 })
+  return NextResponse.json({ data: data ?? [], count: data?.length ?? 0 }, { headers: PUBLIC_CORS_HEADERS })
 }
 
 export async function POST(request: Request) {

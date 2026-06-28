@@ -1,9 +1,22 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { Playfair_Display, Inter } from 'next/font/google'
 import { TranslationProvider } from '@/lib/i18n/context'
 import NavBar from '@/components/NavBar'
 import Footer from '@/components/Footer'
 import CookieBanner from '@/components/CookieBanner'
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  variable: '--font-playfair',
+  display: 'swap',
+})
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   title: 'Estamos por Venezuela — Ayuda humanitaria terremoto 2026',
@@ -22,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" className={`${playfair.variable} ${inter.variable}`}>
       <body>
         <TranslationProvider>
           <a

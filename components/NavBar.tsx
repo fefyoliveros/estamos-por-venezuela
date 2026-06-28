@@ -11,10 +11,10 @@ export default function NavBar() {
   return (
     <header className="sticky top-0 z-40 bg-white border-b border-slate-100 shadow-sm">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2 font-bold text-lg text-slate-900">
-          <span className="text-red-600">🇻🇪</span>
-          <span className="hidden sm:inline">Estamos por Venezuela</span>
-          <span className="sm:hidden">EPV</span>
+        <Link href="/" className="flex items-center gap-2 text-slate-900">
+          <span className="text-red-600 text-base">🇻🇪</span>
+          <span className="hidden sm:inline font-serif text-lg tracking-tight">Estamos por Venezuela</span>
+          <span className="sm:hidden font-serif text-base tracking-tight">EPV</span>
         </Link>
 
         {/* Desktop nav */}

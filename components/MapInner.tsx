@@ -1,8 +1,9 @@
 'use client'
 
 import 'leaflet/dist/leaflet.css'
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
+import { useEffect } from 'react'
 
 const makeIcon = (color: string) =>
   L.divIcon({
@@ -22,6 +23,9 @@ export interface MapPoint {
   items?: string
   hours?: string
   whatsappUrl?: string
+  googleMapsUrl?: string
+  status?: 'active' | 'paused'
+  region: 'barcelona' | 'madrid' | 'sevilla' | 'miami'
   type: 'collection_point' | 'medical' | 'volunteer_coordinator'
 }
 
@@ -37,6 +41,14 @@ const TYPE_COLORS: Record<MapPoint['type'], string> = {
   volunteer_coordinator: '#16a34a',
 }
 
+function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map = useMap()
+  useEffect(() => {
+    map.flyTo(center, zoom, { duration: 1.0 })
+  }, [center, zoom, map])
+  return null
+}
+
 export default function MapInner({ points, center, zoom }: MapInnerProps) {
   return (
     <MapContainer
@@ -48,32 +60,48 @@ export default function MapInner({ points, center, zoom }: MapInnerProps) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <MapController center={center} zoom={zoom} />
       {points.map((point) => (
         <Marker
           key={point.id}
           position={[point.lat, point.lng]}
-          icon={makeIcon(TYPE_COLORS[point.type])}
+          icon={makeIcon(point.status === 'paused' ? '#94a3b8' : TYPE_COLORS[point.type])}
         >
-          <Popup maxWidth={240}>
+          <Popup maxWidth={260}>
             <div>
+              {point.status === 'paused' && (
+                <p className="text-xs font-bold text-amber-600 mb-1">⚠️ Temporalmente pausado</p>
+              )}
               <p className="font-bold text-sm mb-1">{point.name}</p>
               <p className="text-xs text-gray-500 mb-1">{point.address}</p>
               {point.hours && (
                 <p className="text-xs mb-1"><strong>Horario:</strong> {point.hours}</p>
               )}
               {point.items && (
-                <p className="text-xs mb-1"><strong>Aceptan:</strong> {point.items}</p>
+                <p className="text-xs mb-2"><strong>Aceptan:</strong> {point.items}</p>
               )}
-              {point.whatsappUrl && (
-                <a
-                  href={point.whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-green-700 underline"
-                >
-                  Unirse al grupo WhatsApp
-                </a>
-              )}
+              <div className="flex flex-col gap-1 mt-2">
+                {point.googleMapsUrl && (
+                  <a
+                    href={point.googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-700 underline"
+                  >
+                    Ver en Google Maps →
+                  </a>
+                )}
+                {point.whatsappUrl && (
+                  <a
+                    href={point.whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-green-700 underline"
+                  >
+                    Unirse al grupo WhatsApp
+                  </a>
+                )}
+              </div>
             </div>
           </Popup>
         </Marker>

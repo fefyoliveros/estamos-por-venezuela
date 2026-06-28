@@ -118,7 +118,7 @@ export default function AgregarPage() {
 
             <div>
               <label htmlFor="url" className="label">{t('submit.url.label')}</label>
-              <input id="url" type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" className="input" />
+              <input id="url" type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://" className="input" />
             </div>
 
             <div>

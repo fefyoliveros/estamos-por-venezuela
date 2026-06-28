@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 
 export async function GET() {
   const supabase = await createClient()
@@ -9,7 +9,9 @@ export async function GET() {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { data, error } = await supabase
+  // Service role bypasses RLS — admin needs resolved requests too, not just active
+  const adminDb = await createAdminClient()
+  const { data, error } = await adminDb
     .from('help_requests')
     .select('*')
     .order('created_at', { ascending: false })
@@ -30,15 +32,18 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
   }
 
-  const { id } = await request.json() as { id: string }
+  const { id, action } = await request.json() as { id: string; action?: 'resolve' | 'reactivate' }
 
   if (!id) {
     return NextResponse.json({ error: 'id es obligatorio' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const newStatus = action === 'reactivate' ? 'active' : 'resolved'
+
+  const adminDb = await createAdminClient()
+  const { error } = await adminDb
     .from('help_requests')
-    .update({ status: 'resolved' })
+    .update({ status: newStatus })
     .eq('id', id)
 
   if (error) {

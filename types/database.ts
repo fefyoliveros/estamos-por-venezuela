@@ -95,8 +95,8 @@ export interface SkillOffer {
   skill_description: string
   availability: SkillAvailability
   location: string | null
-  contact_method: string
-  contact_value: string
+  contact_method?: string  // excluded from public API
+  contact_value?: string   // excluded from public API
   active: boolean
   created_at: string
 }
@@ -123,6 +123,7 @@ export interface VolunteerInitiative {
   needed_skills: string[]
   spots_available: number | null
   category: InitiativeCategory
+  is_onsite: boolean
   created_at: string
 }
 
@@ -136,6 +137,21 @@ export interface OnsiteVolunteer {
   group_affiliation: string | null
   created_at: string
 }
+
+export type UrgencyLevel = 'critical' | 'high' | 'medium' | 'low'
+
+export interface InitiativeNeed {
+  id: string
+  initiative_id: string
+  updated_by: string
+  location_context: string | null
+  needs_description: string
+  urgency_level: UrgencyLevel
+  active: boolean
+  created_at: string
+}
+
+export type InitiativeNeedInsert = Omit<InitiativeNeed, 'id' | 'created_at' | 'active'>
 
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>

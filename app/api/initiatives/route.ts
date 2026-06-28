@@ -1,17 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { PUBLIC_CORS_HEADERS, corsPreFlight } from '@/lib/cors'
 
-export async function GET() {
+export function OPTIONS() { return corsPreFlight() }
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url)
+  const onsiteOnly = searchParams.get('onsite') === 'true'
+
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('volunteer_initiatives')
-    .select('id, title, description, location, coordinator_name, needed_skills, spots_available, category, created_at')
+    .select('id, title, description, location, coordinator_name, needed_skills, spots_available, category, is_onsite, created_at')
     .eq('active', true)
     .order('created_at', { ascending: false })
     .limit(50)
 
+  if (onsiteOnly) query = query.eq('is_onsite', true)
+
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data: data ?? [] })
+  return NextResponse.json({ data: data ?? [] }, { headers: PUBLIC_CORS_HEADERS })
 }
 
 export async function POST(request: Request) {
@@ -33,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createClient()
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('volunteer_initiatives')
       .insert({
         title,
@@ -44,11 +53,14 @@ export async function POST(request: Request) {
         needed_skills: body.needed_skills ?? [],
         spots_available: body.spots_available ?? null,
         category,
-        active: false, // pending admin approval — not readable until activated
+        is_onsite: (body as { is_onsite?: boolean }).is_onsite ?? false,
+        active: true,
       })
+      .select('id')
+      .single()
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-    return NextResponse.json({ ok: true }, { status: 201 })
+    return NextResponse.json({ ok: true, id: data.id }, { status: 201 })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Error desconocido'
     return NextResponse.json({ error: message }, { status: 500 })

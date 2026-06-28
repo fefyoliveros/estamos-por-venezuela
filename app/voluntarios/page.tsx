@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import type { SkillOffer, SkillCategory, SkillAvailability, VolunteerInitiative, InitiativeCategory, OnsiteVolunteer } from '@/types/database'
+import type { SkillOffer, SkillCategory, SkillAvailability, VolunteerInitiative, InitiativeCategory, OnsiteVolunteer, InitiativeNeed, UrgencyLevel } from '@/types/database'
 
 // ── Shared constants ──────────────────────────────────────────────────────────
 
@@ -37,6 +37,33 @@ const AVAILABILITY_LABELS: Record<SkillAvailability, string> = {
   both:   'Remoto o presencial',
 }
 
+const URGENCY_CONFIG: Record<UrgencyLevel, { label: string; dotColor: string; badgeClass: string; guide: string }> = {
+  critical: {
+    label:      'Critico',
+    dotColor:   'bg-red-500',
+    badgeClass: 'bg-red-50 text-red-800 border border-red-200',
+    guide:      'Riesgo de vida. Se necesita AHORA mismo, sin excepción.',
+  },
+  high: {
+    label:      'Alto',
+    dotColor:   'bg-orange-500',
+    badgeClass: 'bg-orange-50 text-orange-800 border border-orange-200',
+    guide:      'Necesario en las próximas horas. Impacto directo en la operación.',
+  },
+  medium: {
+    label:      'Medio',
+    dotColor:   'bg-amber-400',
+    badgeClass: 'bg-amber-50 text-amber-800 border border-amber-200',
+    guide:      'Necesario hoy o mañana. Mejora significativamente la capacidad.',
+  },
+  low: {
+    label:      'Bajo',
+    dotColor:   'bg-slate-400',
+    badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200',
+    guide:      'Util, pero no urgente. Puede esperar.',
+  },
+}
+
 const INITIAL_SKILL_FORM = {
   full_name: '',
   skill_category: 'translator' as SkillCategory,
@@ -45,6 +72,210 @@ const INITIAL_SKILL_FORM = {
   location: '',
   contact_method: 'whatsapp',
   contact_value: '',
+}
+
+// ── Initiative needs panel ────────────────────────────────────────────────────
+
+const URGENCY_LEVELS: UrgencyLevel[] = ['critical', 'high', 'medium', 'low']
+
+const INITIAL_NEED_FORM = {
+  updated_by: '', location_context: '', needs_description: '', urgency_level: 'medium' as UrgencyLevel,
+}
+
+function NeedsPanel({ initiativeId }: { initiativeId: string }) {
+  const [open, setOpen]               = useState(false)
+  const [needs, setNeeds]             = useState<InitiativeNeed[]>([])
+  const [loading, setLoading]         = useState(false)
+  const [showForm, setShowForm]       = useState(false)
+  const [showGuide, setShowGuide]     = useState(false)
+  const [form, setForm]               = useState(INITIAL_NEED_FORM)
+  const [submitting, setSubmitting]   = useState(false)
+  const [error, setError]             = useState('')
+  const [success, setSuccess]         = useState(false)
+
+  async function fetchNeeds() {
+    setLoading(true)
+    const res = await fetch(`/api/initiatives/${initiativeId}/needs`)
+    const json = await res.json() as { data: InitiativeNeed[] }
+    setNeeds(json.data ?? [])
+    setLoading(false)
+  }
+
+  function handleToggle() {
+    if (!open) { setOpen(true); void fetchNeeds() }
+    else setOpen(false)
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/initiatives/${initiativeId}/needs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      const json = await res.json() as { ok?: boolean; error?: string }
+      if (!res.ok) throw new Error(json.error ?? 'Error')
+      setSuccess(true)
+      setShowForm(false)
+      setForm(INITIAL_NEED_FORM)
+      void fetchNeeds()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al enviar')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 pt-3 border-t border-slate-100">
+      <button
+        onClick={handleToggle}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-slate-300 transition-colors text-xs font-semibold text-slate-600"
+      >
+        <span className="flex items-center gap-1.5">
+          <span>📋</span>
+          <span>
+            {!open && needs.length > 0
+              ? `Ver ${needs.length} necesidad${needs.length !== 1 ? 'es' : ''} activa${needs.length !== 1 ? 's' : ''}`
+              : 'Necesidades y recursos'}
+          </span>
+        </span>
+        <span className="text-slate-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-2">
+          {loading ? (
+            <p className="text-xs text-slate-400">Cargando...</p>
+          ) : needs.length === 0 && !showForm ? (
+            <p className="text-xs text-slate-400 italic">Sin reportes de campo aún.</p>
+          ) : (
+            needs.map((n) => {
+              const u = URGENCY_CONFIG[n.urgency_level]
+              return (
+                <div key={n.id} className={`rounded-lg px-3 py-2 text-xs ${u.badgeClass}`}>
+                  <div className="flex items-center justify-between gap-2 mb-0.5">
+                    <span className="flex items-center gap-1.5 font-bold">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${u.dotColor}`} />
+                      {u.label}
+                    </span>
+                    <span className="text-slate-400 text-xs shrink-0">
+                      {new Date(n.created_at).toLocaleDateString('es', { day: 'numeric', month: 'short' })} · {n.updated_by}
+                    </span>
+                  </div>
+                  {n.location_context && (
+                    <p className="text-xs opacity-70 mb-0.5">📍 {n.location_context}</p>
+                  )}
+                  <p className="leading-relaxed">{n.needs_description}</p>
+                </div>
+              )
+            })
+          )}
+
+          {success && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2 text-xs text-emerald-800">
+              Actualización enviada. Gracias por reportar desde el campo.
+            </div>
+          )}
+
+          {!showForm ? (
+            <button
+              onClick={() => { setShowForm(true); setSuccess(false) }}
+              className="text-xs text-red-600 hover:text-red-800 font-semibold"
+            >
+              + Añadir necesidad actual
+            </button>
+          ) : (
+            <form onSubmit={(e) => void handleSubmit(e)} className="bg-slate-50 rounded-xl p-3 space-y-2.5 mt-2 border border-slate-200">
+              <p className="text-xs font-bold text-slate-700">Reportar desde el campo</p>
+
+              <div>
+                <label className="label text-xs">Tu nombre o rol</label>
+                <input
+                  required
+                  className="input text-xs"
+                  placeholder="Voluntario / Coordinador en zona"
+                  value={form.updated_by}
+                  onChange={(e) => setForm({ ...form, updated_by: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label text-xs">Ubicacion (opcional)</label>
+                <input
+                  className="input text-xs"
+                  placeholder="Ej. Punto de acopio Los Palos Grandes"
+                  value={form.location_context}
+                  onChange={(e) => setForm({ ...form, location_context: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <label className="label text-xs">Que se necesita</label>
+                <textarea
+                  required
+                  rows={2}
+                  className="input text-xs resize-none"
+                  placeholder="Ej: Voluntarios nocturnos y 50 colchonetas urgente."
+                  value={form.needs_description}
+                  onChange={(e) => setForm({ ...form, needs_description: e.target.value })}
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="label text-xs mb-0">Nivel de urgencia</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowGuide(!showGuide)}
+                    className="text-xs text-slate-400 hover:text-slate-600 underline"
+                  >
+                    Como determinarlo
+                  </button>
+                </div>
+                {showGuide && (
+                  <div className="mb-2 space-y-1">
+                    {URGENCY_LEVELS.map((lvl) => {
+                      const u = URGENCY_CONFIG[lvl]
+                      return (
+                        <div key={lvl} className={`rounded px-2 py-1.5 text-xs flex items-start gap-1.5 ${u.badgeClass}`}>
+                          <span className={`w-2 h-2 rounded-full shrink-0 mt-0.5 ${u.dotColor}`} />
+                          <span><strong>{u.label}</strong> — {u.guide}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+                <select
+                  className="input text-xs"
+                  value={form.urgency_level}
+                  onChange={(e) => setForm({ ...form, urgency_level: e.target.value as UrgencyLevel })}
+                >
+                  {URGENCY_LEVELS.map((lvl) => (
+                    <option key={lvl} value={lvl}>{URGENCY_CONFIG[lvl].label} — {URGENCY_CONFIG[lvl].guide}</option>
+                  ))}
+                </select>
+              </div>
+
+              {error && <p className="text-red-600 text-xs">{error}</p>}
+
+              <div className="flex gap-2 pt-1">
+                <button type="button" onClick={() => setShowForm(false)} className="btn-secondary flex-1 text-xs">
+                  Cancelar
+                </button>
+                <button type="submit" disabled={submitting} className="btn-primary flex-1 text-xs disabled:opacity-40">
+                  {submitting ? 'Enviando...' : 'Publicar'}
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 // ── Participar modal ──────────────────────────────────────────────────────────
@@ -191,9 +422,11 @@ function InitiativesTab() {
   const [postForm, setPostForm]       = useState({
     title: '', description: '', location: '', coordinator_name: '',
     coordinator_contact: '', category: 'coordination' as InitiativeCategory,
+    is_onsite: false,
   })
   const [posting, setPosting]         = useState(false)
   const [postError, setPostError]     = useState('')
+  const [initialNeeds, setInitialNeeds] = useState<Array<{ needs_description: string; urgency_level: UrgencyLevel }>>([])
 
   const fetchInitiatives = useCallback(async () => {
     setLoading(true)
@@ -216,10 +449,31 @@ function InitiativesTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(postForm),
       })
-      const json = await res.json() as { error?: string }
+      const json = await res.json() as { ok?: boolean; id?: string; error?: string }
       if (!res.ok) throw new Error(json.error ?? 'Error')
+
+      // Post any initial needs the coordinator added
+      if (json.id) {
+        const validNeeds = initialNeeds.filter((n) => n.needs_description.trim())
+        await Promise.all(
+          validNeeds.map((need) =>
+            fetch(`/api/initiatives/${json.id}/needs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                needs_description: need.needs_description.trim(),
+                urgency_level: need.urgency_level,
+                updated_by: postForm.coordinator_name,
+              }),
+            })
+          )
+        )
+      }
+
+      setInitialNeeds([])
       setPostSuccess(true)
       setShowForm(false)
+      void fetchInitiatives()
     } catch (err) {
       setPostError(err instanceof Error ? err.message : 'Error')
     } finally {
@@ -240,7 +494,7 @@ function InitiativesTab() {
         <div className="mb-6">
           {postSuccess && (
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 mb-3 text-sm text-emerald-800">
-              Tu iniciativa ha sido enviada. La revisaremos y la publicaremos en breve.
+              ¡Tu iniciativa está publicada! Ya aparece en la lista.
             </div>
           )}
           <button onClick={() => setShowForm(true)} className="btn-secondary text-sm">
@@ -281,6 +535,70 @@ function InitiativesTab() {
             <div>
               <label className="label">Contacto (WhatsApp, email, web)</label>
               <input required className="input" value={postForm.coordinator_contact} onChange={(e) => setPostForm({ ...postForm, coordinator_contact: e.target.value })} placeholder="+34 600... / tu@email.com" />
+            </div>
+            <div className="sm:col-span-2 flex items-center gap-3 pt-1">
+              <input
+                id="init_onsite"
+                type="checkbox"
+                checked={postForm.is_onsite}
+                onChange={(e) => setPostForm({ ...postForm, is_onsite: e.target.checked })}
+                className="w-4 h-4 accent-red-600"
+              />
+              <label htmlFor="init_onsite" className="text-sm text-slate-700">
+                🚶 Esta iniciativa requiere presencia física (ir en persona)
+              </label>
+            </div>
+
+            {/* Initial needs / resources */}
+            <div className="sm:col-span-2">
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-sm font-bold text-slate-900 mb-0.5">Recursos y materiales necesarios</p>
+                <p className="text-xs text-slate-400 mb-3">Opcional. Aparecerán resaltados en la tarjeta para que los voluntarios sepan qué traer o qué se necesita.</p>
+                <div className="space-y-2 mb-3">
+                  {initialNeeds.map((need, i) => (
+                    <div key={i} className="flex gap-2 items-start">
+                      <input
+                        className="input text-xs flex-1"
+                        placeholder="Ej: 50 mantas, voluntarios nocturnos, medicamentos..."
+                        value={need.needs_description}
+                        onChange={(e) => {
+                          const updated = [...initialNeeds]
+                          updated[i] = { ...updated[i], needs_description: e.target.value }
+                          setInitialNeeds(updated)
+                        }}
+                      />
+                      <select
+                        className="input text-xs w-28 shrink-0"
+                        value={need.urgency_level}
+                        onChange={(e) => {
+                          const updated = [...initialNeeds]
+                          updated[i] = { ...updated[i], urgency_level: e.target.value as UrgencyLevel }
+                          setInitialNeeds(updated)
+                        }}
+                      >
+                        {URGENCY_LEVELS.map((lvl) => (
+                          <option key={lvl} value={lvl}>{URGENCY_CONFIG[lvl].label}</option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => setInitialNeeds(initialNeeds.filter((_, j) => j !== i))}
+                        className="text-slate-300 hover:text-red-500 text-xl leading-none px-1 shrink-0"
+                        aria-label="Eliminar"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setInitialNeeds([...initialNeeds, { needs_description: '', urgency_level: 'medium' }])}
+                  className="text-xs text-red-600 hover:text-red-800 font-semibold"
+                >
+                  + Añadir recurso o necesidad
+                </button>
+              </div>
             </div>
           </div>
           <p className="text-xs text-slate-400 mb-4">El contacto solo se muestra a quien haga clic en Participar e introduzca su nombre.</p>
@@ -349,6 +667,7 @@ function InitiativesTab() {
                   </div>
                 )}
                 <ParticiparButton initiative={initiative} />
+                <NeedsPanel initiativeId={initiative.id} />
               </div>
             )
           })}
@@ -533,10 +852,7 @@ function SkillsTab() {
                   </div>
                   <p className="text-xs text-slate-600 leading-relaxed mb-3">{offer.skill_description}</p>
                   {offer.location && <p className="text-xs text-slate-400 mb-2">📍 {offer.location}</p>}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-xs text-slate-500">Contacto vía {offer.contact_method}:</span>
-                    <span className="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded select-all">{offer.contact_value}</span>
-                  </div>
+                  <p className="text-xs text-slate-400 italic">Contacto disponible para coordinadores registrados</p>
                 </div>
               )
             })}
@@ -555,19 +871,23 @@ const INITIAL_ONSITE = {
 }
 
 function OnsiteTab() {
-  const [volunteers, setVolunteers] = useState<OnsiteVolunteer[]>([])
-  const [loading, setLoading]       = useState(true)
-  const [showForm, setShowForm]     = useState(false)
-  const [form, setForm]             = useState(INITIAL_ONSITE)
-  const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess]       = useState(false)
-  const [error, setError]           = useState('')
+  const [volunteers, setVolunteers]         = useState<OnsiteVolunteer[]>([])
+  const [onsiteInitiatives, setOnsiteInit]  = useState<VolunteerInitiative[]>([])
+  const [loading, setLoading]               = useState(true)
+  const [showForm, setShowForm]             = useState(false)
+  const [form, setForm]                     = useState(INITIAL_ONSITE)
+  const [submitting, setSubmitting]         = useState(false)
+  const [success, setSuccess]               = useState(false)
+  const [error, setError]                   = useState('')
 
   useEffect(() => {
-    fetch('/api/onsite-volunteers')
-      .then((r) => r.json())
-      .then((json: { data: OnsiteVolunteer[]; count: number }) => {
-        setVolunteers(json.data ?? [])
+    Promise.all([
+      fetch('/api/onsite-volunteers').then((r) => r.json() as Promise<{ data: OnsiteVolunteer[] }>),
+      fetch('/api/initiatives?onsite=true').then((r) => r.json() as Promise<{ data: VolunteerInitiative[] }>),
+    ])
+      .then(([ovJson, initJson]) => {
+        setVolunteers(ovJson.data ?? [])
+        setOnsiteInit(initJson.data ?? [])
         setLoading(false)
       })
       .catch(() => setLoading(false))
@@ -727,6 +1047,30 @@ function OnsiteTab() {
             </button>
           </div>
         </form>
+      )}
+
+      {/* In-person initiatives needing volunteers */}
+      {!loading && onsiteInitiatives.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-sm font-bold text-slate-700 mb-3">Iniciativas que buscan voluntarios presenciales</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {onsiteInitiatives.map((initiative) => {
+              const catMeta = INITIATIVE_CATEGORY_LABELS[initiative.category]
+              return (
+                <div key={initiative.id} className="card flex flex-col">
+                  <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full mb-2 w-fit">
+                    {catMeta.emoji} {catMeta.label}
+                  </span>
+                  <h4 className="font-bold text-slate-900 text-sm leading-tight mb-1">{initiative.title}</h4>
+                  <p className="text-xs text-slate-500 mb-2">📍 {initiative.location} · {initiative.coordinator_name}</p>
+                  <p className="text-xs text-slate-600 leading-relaxed mb-3 flex-1">{initiative.description}</p>
+                  <ParticiparButton initiative={initiative} />
+                  <NeedsPanel initiativeId={initiative.id} />
+                </div>
+              )
+            })}
+          </div>
+        </div>
       )}
 
       {/* Volunteer list */}

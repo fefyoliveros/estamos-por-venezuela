@@ -16,10 +16,18 @@ const config: Config = {
         emergency: '#DC2626',
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-inter)', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
       },
       animation: {
         pulse: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'ken-burns': 'kenBurns 18s ease-out forwards',
+      },
+      keyframes: {
+        kenBurns: {
+          from: { transform: 'scale(1)' },
+          to: { transform: 'scale(1.08)' },
+        },
       },
     },
   },
