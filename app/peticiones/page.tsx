@@ -79,9 +79,29 @@ export default function PeticionesPage() {
         </Link>
       </div>
 
+      {/* Starlink urgent call */}
+      <div className="bg-slate-900 text-white rounded-2xl px-5 py-4 mb-4 flex items-start gap-3">
+        <span className="text-2xl shrink-0">📡</span>
+        <div>
+          <p className="font-black text-base mb-1">Se necesitan antenas Starlink con urgencia</p>
+          <p className="text-sm text-slate-300 leading-relaxed">
+            Si tienes una antena Starlink, puedes salvar vidas. Las personas atrapadas pueden conectarse desde un TikTok Live, indicar que están vivas y compartir su ubicación exacta. Contacta a los equipos de rescate para coordinar el préstamo de tu antena.
+          </p>
+          <a
+            href="https://wa.me/?text=Tengo+una+antena+Starlink+y+quiero+apoyar+en+la+emergencia+de+Venezuela"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-white text-slate-900 font-bold text-sm rounded-lg hover:bg-slate-100 transition-colors"
+          >
+            <WhatsAppIcon />
+            Tengo Starlink — quiero ayudar
+          </a>
+        </div>
+      </div>
+
       {/* Emergency callout */}
       {trapped.length > 0 && (
-        <div className="bg-red-600 text-white rounded-2xl px-5 py-4 mb-6 flex items-start gap-3">
+        <div className="bg-red-600 text-white rounded-2xl px-5 py-4 mb-4 flex items-start gap-3">
           <span className="text-2xl shrink-0">🆘</span>
           <div>
             <p className="font-black text-base mb-0.5">
@@ -91,6 +111,20 @@ export default function PeticionesPage() {
           </div>
         </div>
       )}
+
+      {/* Coordinacion cross-promo */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
+        <div>
+          <p className="font-bold text-slate-900 text-sm">¿Eres hospital o centro de acopio?</p>
+          <p className="text-xs text-slate-600 mt-0.5">Publica tu lista de insumos para que los voluntarios sepan exactamente qué llevar.</p>
+        </div>
+        <Link
+          href="/coordinacion"
+          className="shrink-0 text-xs font-bold text-blue-700 bg-white border border-blue-300 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+        >
+          Coordinación de insumos →
+        </Link>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">

@@ -31,6 +31,9 @@ export default function NavBar() {
           <Link href="/voluntarios" className="text-slate-600 hover:text-slate-900 transition-colors">
             {t('nav.voluntarios')}
           </Link>
+          <Link href="/coordinacion" className="text-slate-600 hover:text-slate-900 transition-colors">
+            Coordinación
+          </Link>
           <Link href="/asistente" className="text-slate-600 hover:text-slate-900 transition-colors">
             {t('nav.asistente')}
           </Link>
@@ -89,6 +92,9 @@ export default function NavBar() {
           </Link>
           <Link href="/voluntarios" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
             {t('nav.voluntarios')}
+          </Link>
+          <Link href="/coordinacion" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
+            Coordinación
           </Link>
           <Link href="/asistente" className="py-2 text-slate-700" onClick={() => setMenuOpen(false)}>
             {t('nav.asistente')}

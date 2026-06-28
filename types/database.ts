@@ -154,6 +154,38 @@ export interface InitiativeNeed {
 
 export type InitiativeNeedInsert = Omit<InitiativeNeed, 'id' | 'created_at' | 'active'>
 
+export type HubType = 'hospital' | 'collection_point'
+export type ReportType = 'shortage' | 'surplus'
+
+export interface SupplyHub {
+  id: string
+  name: string
+  hub_type: HubType
+  location: string
+  city: string | null
+  contact_name: string | null
+  contact_whatsapp: string | null
+  contact_instagram: string | null
+  description: string | null
+  verified: boolean
+  active: boolean
+  created_at: string
+}
+
+export interface SupplyReport {
+  id: string
+  hub_id: string
+  report_type: ReportType
+  items: string[]
+  description: string | null
+  urgency: UrgencyLevel
+  updated_by: string
+  active: boolean
+  created_at: string
+}
+
+export type SupplyReportInsert = Omit<SupplyReport, 'id' | 'active' | 'created_at'>
+
 export type ResourceInsert = Omit<Resource, 'id' | 'created_at'>
 export type SubmissionInsert = Omit<Submission, 'id' | 'created_at'>
 export type HelpRequestInsert = Omit<HelpRequest, 'id' | 'created_at'>
