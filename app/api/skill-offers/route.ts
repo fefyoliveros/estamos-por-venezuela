@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   const supabase = await createClient()
   let query = supabase
     .from('skill_offers')
-    .select('id, full_name, skill_category, skill_description, availability, location, active, created_at')
+    .select('id, full_name, skill_category, skill_description, availability, location, contact_method, contact_value, active, created_at')
     .eq('active', true)
     .order('created_at', { ascending: false })
 
