@@ -1,8 +1,21 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import type { HelpRequest, NeedType } from '@/types/database'
+import type { HelpRequest, HelpRequestUrgency, HelpRequestResolutionType, NeedType } from '@/types/database'
+import type { HelpRequestPin } from '@/components/HelpRequestMapInner'
+
+const HelpRequestMap = dynamic(() => import('@/components/HelpRequestMapInner'), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full w-full flex items-center justify-center bg-slate-100 rounded-xl">
+      <p className="text-slate-400 text-sm">Cargando mapa...</p>
+    </div>
+  ),
+})
+
+const PAGE_SIZE = 6
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -11,6 +24,13 @@ function timeAgo(dateStr: string): string {
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `hace ${hours}h`
   return `hace ${Math.floor(hours / 24)}d`
+}
+
+function formatDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleString('es-ES', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  })
 }
 
 const NEED_LABELS: Record<NeedType, string> = {
@@ -30,6 +50,34 @@ const NEED_FILTERS: { value: NeedType | 'all'; label: string }[] = [
   { value: 'other', label: 'Otros' },
 ]
 
+const URGENCY_LABELS: Record<HelpRequestUrgency, string> = {
+  critical: 'Crítico',
+  high: 'Alta',
+  medium: 'Media',
+  low: 'Baja',
+}
+
+const URGENCY_BADGE: Record<HelpRequestUrgency, string> = {
+  critical: 'bg-red-700 text-white',
+  high:     'bg-red-500 text-white',
+  medium:   'bg-orange-500 text-white',
+  low:      'bg-yellow-500 text-white',
+}
+
+const RESOLUTION_LABELS: Record<HelpRequestResolutionType, string> = {
+  found:     '✓ Encontrada con vida',
+  deceased:  '✝ Fallecida',
+  evacuated: '🚁 Evacuada',
+  resolved:  '✓ Resuelta',
+}
+
+const RESOLUTION_COLORS: Record<HelpRequestResolutionType, string> = {
+  found:     'text-emerald-700',
+  deceased:  'text-slate-500',
+  evacuated: 'text-blue-700',
+  resolved:  'text-emerald-700',
+}
+
 function WhatsAppIcon() {
   return (
     <svg viewBox="0 0 24 24" className="w-3.5 h-3.5 fill-current shrink-0" aria-hidden="true">
@@ -38,37 +86,97 @@ function WhatsAppIcon() {
   )
 }
 
+type ResolutionDraft = {
+  type: HelpRequestResolutionType
+  notes: string
+}
+
 export default function PeticionesPage() {
   const [requests, setRequests] = useState<HelpRequest[]>([])
+  const [resolved, setResolved] = useState<HelpRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<NeedType | 'all'>('all')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [updating, setUpdating] = useState<Record<string, boolean>>({})
+  const [resolutionOpen, setResolutionOpen] = useState<string | null>(null)
+  const [resolutionDraft, setResolutionDraft] = useState<ResolutionDraft>({ type: 'found', notes: '' })
 
-  const fetchRequests = useCallback(async () => {
-    const res = await fetch('/api/help-requests')
-    const json = await res.json() as { data: HelpRequest[] }
-    setRequests(json.data ?? [])
+  const fetchAll = useCallback(async () => {
+    const [activeRes, resolvedRes] = await Promise.all([
+      fetch('/api/help-requests'),
+      fetch('/api/help-requests?status=resolved'),
+    ])
+    const activeJson = await activeRes.json() as { data: HelpRequest[] }
+    const resolvedJson = await resolvedRes.json() as { data: HelpRequest[] }
+    setRequests(activeJson.data ?? [])
+    setResolved(resolvedJson.data ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => {
-    void fetchRequests()
-    const timer = setInterval(() => void fetchRequests(), 60000)
+    void fetchAll()
+    const timer = setInterval(() => void fetchAll(), 60000)
     return () => clearInterval(timer)
-  }, [fetchRequests])
+  }, [fetchAll])
 
   const filtered = filter === 'all' ? requests : requests.filter((r) => r.needs.includes(filter))
+  const visible = filtered.slice(0, visibleCount)
+  const hasMore = filtered.length > visibleCount
   const trapped = requests.filter((r) => r.needs.includes('trapped'))
+
+  const mappable: HelpRequestPin[] = requests
+    .filter((r) => r.latitude != null && r.longitude != null)
+    .map((r) => ({
+      id: r.id,
+      name: r.full_name,
+      lat: r.latitude!,
+      lng: r.longitude!,
+      location: r.location,
+      needs: r.needs,
+      details: r.details,
+      whatsapp: r.whatsapp,
+      urgency: r.urgency,
+    }))
+
+  async function patchRequest(id: string, payload: Record<string, string | null>) {
+    setUpdating((u) => ({ ...u, [id]: true }))
+    await fetch(`/api/help-requests/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    await fetchAll()
+    setUpdating((u) => ({ ...u, [id]: false }))
+  }
+
+  async function resolveSimple(id: string) {
+    await patchRequest(id, { status: 'resolved', resolution_type: 'resolved' })
+  }
+
+  async function resolveTrapped(id: string) {
+    await patchRequest(id, {
+      status: 'resolved',
+      resolution_type: resolutionDraft.type,
+      resolution_notes: resolutionDraft.notes || null,
+    })
+    setResolutionOpen(null)
+    setResolutionDraft({ type: 'found', notes: '' })
+  }
+
+  async function changeUrgency(id: string, urgency: HelpRequestUrgency) {
+    await patchRequest(id, { urgency })
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 mb-1">Directorio de peticiones de ayuda</h1>
+          <h1 className="text-2xl font-black text-slate-900 mb-1">Peticiones de ayuda</h1>
           <p className="text-slate-500 text-sm">
             {loading
               ? 'Cargando...'
-              : `${requests.length} solicitud${requests.length !== 1 ? 'es' : ''} activa${requests.length !== 1 ? 's' : ''} · se actualiza cada 60 s`}
+              : `${requests.length} activa${requests.length !== 1 ? 's' : ''} · ${resolved.length} resuelta${resolved.length !== 1 ? 's' : ''} · se actualiza cada 60 s`}
           </p>
         </div>
         <Link
@@ -79,13 +187,33 @@ export default function PeticionesPage() {
         </Link>
       </div>
 
+      {/* Red Ayuda Venezuela highlight */}
+      <div className="bg-gradient-to-r from-red-700 to-red-600 text-white rounded-2xl px-5 py-4 mb-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="font-black text-sm mb-1">🔍 ¿Buscas a alguien desaparecido?</p>
+            <p className="text-xs text-red-100 leading-relaxed">
+              <strong>Red Ayuda Venezuela</strong> centraliza reportes de desaparecidos, coordina rescatistas y mantiene un registro de edificios afectados en La Guaira.
+            </p>
+          </div>
+          <a
+            href="https://www.redayudavenezuela.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 px-3 py-2 bg-white text-red-700 font-bold text-xs rounded-lg hover:bg-red-50 transition-colors whitespace-nowrap"
+          >
+            Ir al sitio →
+          </a>
+        </div>
+      </div>
+
       {/* Starlink urgent call */}
       <div className="bg-slate-900 text-white rounded-2xl px-5 py-4 mb-4 flex items-start gap-3">
         <span className="text-2xl shrink-0">📡</span>
         <div>
           <p className="font-black text-base mb-1">Se necesitan antenas Starlink con urgencia</p>
           <p className="text-sm text-slate-300 leading-relaxed">
-            Si tienes una antena Starlink, puedes salvar vidas. Las personas atrapadas pueden conectarse desde un TikTok Live, indicar que están vivas y compartir su ubicación exacta. Contacta a los equipos de rescate para coordinar el préstamo de tu antena.
+            Si tienes una antena Starlink, puedes salvar vidas. Las personas atrapadas pueden conectarse desde un TikTok Live, indicar que están vivas y compartir su ubicación exacta.
           </p>
           <div className="flex flex-wrap gap-2 mt-3">
             <a
@@ -96,10 +224,7 @@ export default function PeticionesPage() {
             >
               📸 @ccnlasmercedes
             </a>
-            <span className="inline-flex items-center text-sm text-slate-300">o</span>
-            <span className="inline-flex items-center text-sm text-slate-200 leading-snug">
-              lleva tu antena directamente a los sitios de rescate más cercanos
-            </span>
+            <span className="inline-flex items-center text-sm text-slate-300">o lleva tu antena a los sitios de rescate más cercanos</span>
           </div>
         </div>
       </div>
@@ -112,7 +237,7 @@ export default function PeticionesPage() {
             <p className="font-black text-base mb-0.5">
               {trapped.length} persona{trapped.length !== 1 ? 's' : ''} atrapada{trapped.length !== 1 ? 's' : ''}
             </p>
-            <p className="text-sm text-red-100">Necesitan rescate inmediato. Si puedes ayudar, actúa ahora.</p>
+            <p className="text-sm text-red-100">Necesitan rescate. Si puedes ayudar, actúa ahora.</p>
           </div>
         </div>
       )}
@@ -121,7 +246,7 @@ export default function PeticionesPage() {
       <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
         <div>
           <p className="font-bold text-slate-900 text-sm">¿Quieres llevar insumos a un hospital o centro de acopio?</p>
-          <p className="text-xs text-slate-600 mt-0.5">Esta sección es para solicitudes de personas individuales. Para ver qué materiales necesita cada centro y cómo llevarlos, ve a Coordinación.</p>
+          <p className="text-xs text-slate-600 mt-0.5">Esta sección es para solicitudes de personas individuales. Para ver qué materiales necesita cada centro, ve a Coordinación.</p>
         </div>
         <Link
           href="/coordinacion"
@@ -136,7 +261,7 @@ export default function PeticionesPage() {
         {NEED_FILTERS.map((f) => (
           <button
             key={f.value}
-            onClick={() => setFilter(f.value)}
+            onClick={() => { setFilter(f.value); setVisibleCount(PAGE_SIZE) }}
             className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
               filter === f.value
                 ? f.value === 'trapped'
@@ -174,45 +299,241 @@ export default function PeticionesPage() {
               {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
             </p>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {filtered.map((req) => (
-              <article
-                key={req.id}
-                className={`card border ${req.needs.includes('trapped') ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="font-semibold text-sm text-slate-900">{req.full_name}</p>
-                  <span className="text-xs text-slate-400 whitespace-nowrap shrink-0">{timeAgo(req.created_at)}</span>
-                </div>
-                <p className="text-xs text-slate-500 mb-2">📍 {req.location}</p>
-                <div className="flex flex-wrap gap-1 mb-2">
-                  {req.needs.map((n) => (
-                    <span
-                      key={n}
-                      className={`badge text-xs ${n === 'trapped' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+
+          {/* Request cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            {visible.map((req) => {
+              const isTrapped = req.needs.includes('trapped')
+              const isUpdating = updating[req.id]
+              const showResolution = resolutionOpen === req.id
+
+              return (
+                <article
+                  key={req.id}
+                  className={`card border flex flex-col ${isTrapped ? 'border-red-300 bg-red-50' : 'border-slate-100'}`}
+                >
+                  {/* Header row */}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <p className="font-semibold text-sm text-slate-900 leading-snug">{req.full_name}</p>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${URGENCY_BADGE[req.urgency]}`}>
+                        {URGENCY_LABELS[req.urgency]}
+                      </span>
+                      <span className="text-xs text-slate-400">{timeAgo(req.created_at)}</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-500 mb-2">📍 {req.location}</p>
+
+                  {/* Need badges */}
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {req.needs.map((n) => (
+                      <span
+                        key={n}
+                        className={`badge text-xs ${n === 'trapped' ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                      >
+                        {NEED_LABELS[n as NeedType]}
+                      </span>
+                    ))}
+                  </div>
+
+                  {req.details && (
+                    <p className="text-xs text-slate-600 leading-relaxed mb-2">{req.details}</p>
+                  )}
+
+                  {req.whatsapp && (
+                    <a
+                      href={`https://wa.me/${req.whatsapp.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors mb-2 self-start"
                     >
-                      {NEED_LABELS[n]}
-                    </span>
-                  ))}
-                </div>
-                {req.details && (
-                  <p className="text-xs text-slate-600 leading-relaxed mb-3">{req.details}</p>
-                )}
-                {req.whatsapp && (
-                  <a
-                    href={`https://wa.me/${req.whatsapp.replace(/\D/g, '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
-                  >
-                    <WhatsAppIcon />
-                    {req.whatsapp}
-                  </a>
-                )}
-              </article>
-            ))}
+                      <WhatsAppIcon />
+                      {req.whatsapp}
+                    </a>
+                  )}
+
+                  {/* Urgency change */}
+                  <div className="flex items-center gap-1 flex-wrap mt-auto pt-2 border-t border-slate-100">
+                    <span className="text-[10px] text-slate-400 mr-0.5">Urgencia:</span>
+                    {(['critical', 'high', 'medium', 'low'] as HelpRequestUrgency[]).map((u) => (
+                      <button
+                        key={u}
+                        disabled={isUpdating || req.urgency === u}
+                        onClick={() => changeUrgency(req.id, u)}
+                        className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border transition-colors ${
+                          req.urgency === u
+                            ? URGENCY_BADGE[u] + ' border-transparent'
+                            : 'bg-white text-slate-500 border-slate-200 hover:border-slate-400'
+                        }`}
+                      >
+                        {URGENCY_LABELS[u]}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Resolution actions */}
+                  {isTrapped && !showResolution && (
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => setResolutionOpen(req.id)}
+                      className="mt-2 text-xs font-semibold text-slate-600 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-100 transition-colors self-start"
+                    >
+                      {isUpdating ? 'Actualizando...' : '📋 Actualizar estado'}
+                    </button>
+                  )}
+
+                  {!isTrapped && (
+                    <button
+                      disabled={isUpdating}
+                      onClick={() => resolveSimple(req.id)}
+                      className="mt-2 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors self-start"
+                    >
+                      {isUpdating ? 'Guardando...' : '✓ Marcar resuelta'}
+                    </button>
+                  )}
+
+                  {/* Resolution form for trapped */}
+                  {showResolution && (
+                    <div className="mt-2 p-3 bg-white border border-slate-200 rounded-xl">
+                      <p className="text-xs font-bold text-slate-700 mb-2">¿Qué pasó?</p>
+                      <div className="flex flex-col gap-1.5 mb-2">
+                        {(['found', 'evacuated', 'deceased'] as HelpRequestResolutionType[]).map((t) => (
+                          <label key={t} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`res-${req.id}`}
+                              checked={resolutionDraft.type === t}
+                              onChange={() => setResolutionDraft((d) => ({ ...d, type: t }))}
+                              className="accent-red-600"
+                            />
+                            <span className={`text-xs font-semibold ${RESOLUTION_COLORS[t]}`}>
+                              {RESOLUTION_LABELS[t]}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                      <textarea
+                        placeholder="Notas adicionales (hospital, fecha, etc.)"
+                        value={resolutionDraft.notes}
+                        onChange={(e) => setResolutionDraft((d) => ({ ...d, notes: e.target.value }))}
+                        className="w-full text-xs border border-slate-200 rounded-lg px-2 py-1.5 mb-2 resize-none h-14 focus:outline-none focus:ring-1 focus:ring-slate-300"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          disabled={isUpdating}
+                          onClick={() => resolveTrapped(req.id)}
+                          className="text-xs font-bold text-white bg-slate-800 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+                        >
+                          {isUpdating ? 'Guardando...' : 'Confirmar'}
+                        </button>
+                        <button
+                          onClick={() => setResolutionOpen(null)}
+                          className="text-xs text-slate-400 hover:text-slate-700"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
+
+          {/* Load more */}
+          {hasMore && (
+            <div className="text-center mb-8">
+              <button
+                onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                className="px-6 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 hover:border-slate-400 transition-colors"
+              >
+                Ver más ({filtered.length - visibleCount} restantes)
+              </button>
+            </div>
+          )}
         </>
+      )}
+
+      {/* Map of geolocated requests */}
+      {mappable.length > 0 && (
+        <div className="mt-6 mb-10">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-lg font-black text-slate-900">Mapa de solicitudes</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {mappable.length} ubicaciones geolocalizadas · toca un pin para ver detalles
+              </p>
+            </div>
+            {/* Legend */}
+            <div className="hidden sm:flex items-center gap-3">
+              {(['critical', 'high', 'medium'] as HelpRequestUrgency[]).map((u) => (
+                <div key={u} className="flex items-center gap-1">
+                  <div className={`w-3 h-3 rounded-full border-2 border-white shadow ${
+                    u === 'critical' ? 'bg-red-900' : u === 'high' ? 'bg-red-500' : 'bg-orange-500'
+                  }`} />
+                  <span className="text-[10px] text-slate-500">{URGENCY_LABELS[u]}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="rounded-xl overflow-hidden border border-slate-200 shadow-sm" style={{ height: 420 }}>
+            <HelpRequestMap pins={mappable} />
+          </div>
+        </div>
+      )}
+
+      {/* Outcomes log */}
+      {resolved.length > 0 && (
+        <section className="mt-2">
+          <div className="border-t border-slate-100 pt-8">
+            <h2 className="text-lg font-black text-slate-900 mb-1">Registro de actualizaciones</h2>
+            <p className="text-xs text-slate-500 mb-5">
+              {resolved.length} solicitude{resolved.length !== 1 ? 's' : ''} con estado actualizado.
+              Ayuda a mantener este registro preciso.
+            </p>
+            <div className="space-y-3">
+              {resolved.map((req) => {
+                const rt = req.resolution_type
+                return (
+                  <div
+                    key={req.id}
+                    className={`flex items-start gap-3 p-3 rounded-xl border ${
+                      rt === 'deceased'
+                        ? 'bg-slate-50 border-slate-200'
+                        : rt === 'found' || rt === 'evacuated'
+                        ? 'bg-emerald-50 border-emerald-200'
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <span className="text-lg shrink-0 mt-0.5">
+                      {rt === 'found' ? '✓' : rt === 'deceased' ? '✝' : rt === 'evacuated' ? '🚁' : '✓'}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                        <p className="font-bold text-sm text-slate-900">{req.full_name}</p>
+                        {rt && (
+                          <span className={`text-xs font-semibold ${RESOLUTION_COLORS[rt]}`}>
+                            {RESOLUTION_LABELS[rt]}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500">📍 {req.location}</p>
+                      {req.resolution_notes && (
+                        <p className="text-xs text-slate-600 mt-1">{req.resolution_notes}</p>
+                      )}
+                      {req.resolved_at && (
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Actualizado: {formatDate(req.resolved_at)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </section>
       )}
     </div>
   )

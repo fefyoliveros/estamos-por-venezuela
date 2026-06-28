@@ -170,7 +170,7 @@ export const translations = {
 
     // New nav items
     'nav.donaciones': 'Donar',
-    'nav.mapa': 'Mapa',
+    'nav.mapa': 'Ayuda desde el exterior',
     'nav.voluntarios': 'Voluntarios',
     'nav.peticiones': 'Peticiones',
 
@@ -361,7 +361,7 @@ export const translations = {
 
     // New nav items
     'nav.donaciones': 'Donate',
-    'nav.mapa': 'Map',
+    'nav.mapa': 'Aid from Abroad',
     'nav.voluntarios': 'Volunteers',
     'nav.peticiones': 'Help Requests',
 

@@ -16,6 +16,8 @@ export type SubmissionStatus = 'pending' | 'approved' | 'rejected'
 export type NeedType = 'food' | 'medicine' | 'find_person' | 'trapped' | 'other'
 
 export type HelpRequestStatus = 'active' | 'resolved'
+export type HelpRequestResolutionType = 'found' | 'deceased' | 'evacuated' | 'resolved'
+export type HelpRequestUrgency = 'critical' | 'high' | 'medium' | 'low'
 
 export type Country = 'VE' | 'ES' | 'INT' | string
 
@@ -61,6 +63,12 @@ export interface HelpRequest {
   details: string | null
   whatsapp: string | null
   status: HelpRequestStatus
+  urgency: HelpRequestUrgency
+  latitude: number | null
+  longitude: number | null
+  resolved_at: string | null
+  resolution_type: HelpRequestResolutionType | null
+  resolution_notes: string | null
   created_at: string
 }
 
