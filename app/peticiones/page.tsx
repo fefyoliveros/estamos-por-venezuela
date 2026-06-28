@@ -120,14 +120,14 @@ export default function PeticionesPage() {
       {/* Coordinacion cross-promo */}
       <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-4 mb-6 flex items-center justify-between gap-4">
         <div>
-          <p className="font-bold text-slate-900 text-sm">¿Eres hospital o centro de acopio?</p>
-          <p className="text-xs text-slate-600 mt-0.5">Publica tu lista de insumos para que los voluntarios sepan exactamente qué llevar.</p>
+          <p className="font-bold text-slate-900 text-sm">¿Quieres llevar insumos a un hospital o centro de acopio?</p>
+          <p className="text-xs text-slate-600 mt-0.5">Esta sección es para solicitudes de personas individuales. Para ver qué materiales necesita cada centro y cómo llevarlos, ve a Coordinación.</p>
         </div>
         <Link
           href="/coordinacion"
-          className="shrink-0 text-xs font-bold text-blue-700 bg-white border border-blue-300 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors"
+          className="shrink-0 text-xs font-bold text-blue-700 bg-white border border-blue-300 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
         >
-          Coordinación de insumos →
+          Ver necesidades →
         </Link>
       </div>
 

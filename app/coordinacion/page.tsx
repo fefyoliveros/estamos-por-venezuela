@@ -194,11 +194,119 @@ function WhatsAppIcon() {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+const URGENCY_ORDER: Record<UrgencyLevel, number> = { critical: 0, high: 1, medium: 2, low: 3 }
+
 const URGENCY_CONFIG: Record<UrgencyLevel, { label: string; badgeClass: string; dotColor: string }> = {
   critical: { label: 'CRÍTICO',  badgeClass: 'bg-red-100 text-red-800 border border-red-300',      dotColor: 'bg-red-500' },
   high:     { label: 'ALTO',     badgeClass: 'bg-orange-100 text-orange-800 border border-orange-300', dotColor: 'bg-orange-500' },
   medium:   { label: 'MEDIO',    badgeClass: 'bg-amber-100 text-amber-800 border border-amber-300',  dotColor: 'bg-amber-400' },
   low:      { label: 'BAJO',     badgeClass: 'bg-slate-100 text-slate-700 border border-slate-200',  dotColor: 'bg-slate-400' },
+}
+
+// ── Urgent needs panel ────────────────────────────────────────────────────────
+
+type ReportWithHub = {
+  id: string
+  hub_id: string
+  items: string[]
+  description: string | null
+  urgency: UrgencyLevel
+  updated_by: string
+  created_at: string
+  supply_hubs: { name: string; hub_type: string; city: string | null; contact_whatsapp: string | null } | null
+}
+
+function UrgentNeedsPanel() {
+  const [reports, setReports] = useState<ReportWithHub[]>([])
+  const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/supply-reports?type=shortage')
+      .then(r => r.json() as Promise<{ data: ReportWithHub[] }>)
+      .then(({ data }) => {
+        const seen = new Set<string>()
+        const deduped = (data ?? []).filter(r => {
+          if (seen.has(r.hub_id)) return false
+          seen.add(r.hub_id)
+          return true
+        })
+        deduped.sort((a, b) =>
+          URGENCY_ORDER[a.urgency] - URGENCY_ORDER[b.urgency] ||
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )
+        setReports(deduped)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  if (loading) return null
+
+  if (reports.length === 0) return (
+    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 mb-8 text-center">
+      <p className="text-sm text-slate-400">Sin reportes de necesidades aún. Los coordinadores pueden actualizarlos desde la tarjeta de su centro.</p>
+    </div>
+  )
+
+  const visible = expanded ? reports : reports.slice(0, 4)
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Qué necesitan ahora</h2>
+      <div className="space-y-2">
+        {visible.map(r => {
+          const hub = r.supply_hubs
+          const urgency = URGENCY_CONFIG[r.urgency]
+          return (
+            <div key={r.id} className="bg-white border border-slate-100 rounded-xl px-4 py-3 flex items-start gap-3 shadow-sm">
+              <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded-full mt-0.5 ${urgency.badgeClass}`}>
+                <span className={`inline-block w-1.5 h-1.5 rounded-full mr-1 ${urgency.dotColor}`} />
+                {urgency.label}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-900 leading-snug">
+                  {hub?.hub_type === 'hospital' ? '🏥' : '📦'} {hub?.name ?? 'Centro'}
+                  {hub?.city ? <span className="text-slate-400 font-normal ml-1 text-xs">· {hub.city}</span> : null}
+                </p>
+                {r.items.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {r.items.slice(0, 6).map(item => (
+                      <span key={item} className="text-xs bg-red-50 text-red-700 border border-red-200 px-2 py-0.5 rounded-full">{item}</span>
+                    ))}
+                    {r.items.length > 6 && <span className="text-xs text-slate-400 self-center">+{r.items.length - 6} más</span>}
+                  </div>
+                )}
+                {r.description && r.items.length === 0 && (
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">{r.description}</p>
+                )}
+                <p className="text-xs text-slate-400 mt-1">{timeAgo(r.created_at)}</p>
+              </div>
+              {hub?.contact_whatsapp && (
+                <a
+                  href={`https://wa.me/${hub.contact_whatsapp.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg hover:bg-emerald-100 transition-colors"
+                >
+                  <WhatsAppIcon />
+                  Llevar
+                </a>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {reports.length > 4 && (
+        <button
+          onClick={() => setExpanded(v => !v)}
+          className="mt-3 text-xs text-slate-400 hover:text-slate-700 underline"
+        >
+          {expanded ? 'Ver menos' : `Ver ${reports.length - 4} centro${reports.length - 4 !== 1 ? 's' : ''} más`}
+        </button>
+      )}
+    </div>
+  )
 }
 
 const MEDICAL_SUPPLIES: string[] = [
@@ -676,6 +784,8 @@ export default function CoordinacionPage() {
           Actualiza la lista de tu centro para que los voluntarios sepan exactamente qué llevar.
         </p>
       </div>
+
+      <UrgentNeedsPanel />
 
       {/* Add hub form */}
       {showAddForm ? (
